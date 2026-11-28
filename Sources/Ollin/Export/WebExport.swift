@@ -358,8 +358,8 @@ extension OllinApp {
                                 skipSeconds: Double = 0, controls: Bool = true,
                                 maxBytes: Int? = nil,
                                 remake: (() -> Sketch)? = nil) throws -> WebRecording {
-        isRenderingHeadless = true
-        defer { isRenderingHeadless = false }
+        let modeFound = DriveMode.enter()
+        defer { modeFound.restore() }
         let size = sketch.canvasSizeForRun()
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         // Every stroke and fill is kept as its points from here on, a batch

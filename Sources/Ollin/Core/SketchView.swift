@@ -544,6 +544,11 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
 
     /// Whether this runner is playing a recorded take back.
     public var isReplaying: Bool { sketch.takePlayer != nil }
+    /// Whether this runner is recording a take. It turns false by itself
+    /// whenever the take ends: at `finishTake()`, when a replay starts, and
+    /// when the sketch is swapped for another (a reload writes the take out
+    /// and ends it).
+    public var isRecordingTake: Bool { sketch.takeRecorder != nil }
     /// The transport's own pause, distinct from `noLoop()`.
     private var replayPaused: Bool { heldFor.contains(.replay) }
     /// A jump asked for by the transport keys: the `frameCount` to land on.
@@ -581,6 +586,8 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         guard let recorder = sketch.takeRecorder else { return nil }
         sketch.takeRecorder = nil
         let take = recorder.take
+        // The destination belongs to the take that ends here.
+        defer { takeRecordURL = nil }
         if let url = takeRecordURL {
             do {
                 try take.write(to: url)
@@ -639,6 +646,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         didReload = false          // a rewind is a fresh run, not a code swap
         take.install(on: fresh)
         restartForTransport()
+        settleReplayTitle()        // still a replay: the swap above gave the title back
     }
 
     /// Jump the replay to `frame` (a `frameCount` value, clamped to the take).
@@ -721,12 +729,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         // returning to the run loop, so this frame's own pool is what keeps a
         // long jump from ending with a few thousand readbacks still resident.
         autoreleasepool {
-            if !didSetup {
-                applyLaunchParamsBeforeSetup()
-                performSetup()
-                applyLaunchParams()
-                didSetup = true
-            }
+            if !didSetup { performFirstSetup(now: CACurrentMediaTime()) }
             if setupError != nil { return }
             sketch.advance(time: 0, deltaTime: 1.0 / 60, frameRate: 60)
             sketch.performDraw()
@@ -775,8 +778,31 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         let pct = min(100, Int((Double(sketch.frameCount) / Double(total) * 100).rounded()))
         let state = sketch.frameCount >= total ? "end, space starts over"
                   : replayPaused ? "paused" : "playing"
+        // The title is the window's own until a replay borrows it, and what
+        // it said then is what it gets back.
+        if titleBeforeReplay == nil { titleBeforeReplay = window.title }
         window.title = "\(sketch.title) - replay \(pct)% | \(state)"
         #endif
+    }
+
+    /// What the window's title said before a replay borrowed it, kept while
+    /// the replay's own title is up.
+    private var titleBeforeReplay: String?
+
+    /// Bring the window's title in line with whether a take is playing: the
+    /// replay's position and state while one is, and otherwise the title the
+    /// window had before. Called wherever a replay can end without playing
+    /// out (a seed restart, a swap to another sketch), since the frames that
+    /// kept the title current stop coming with it.
+    private func settleReplayTitle() {
+        if let player = sketch.takePlayer {
+            updateReplayTitle(player)
+        } else if let title = titleBeforeReplay {
+            titleBeforeReplay = nil
+            #if os(macOS)
+            view?.window?.title = title
+            #endif
+        }
     }
 
     // MARK: The clock transport (the parameter timeline's play, pause, and scrub)
@@ -940,6 +966,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         // A new run loops until its own `setup()` or `draw()` says otherwise:
         // the stillness of the run before it is not carried in.
         sketch.loop()
+        settleReplayTitle()            // the replay this ended takes its title with it
     }
 
     /// Drive the camera orbit from a drag on the axis widget's puck by feeding the
@@ -1053,6 +1080,7 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         // is not going to run again, so the loop holds again once the frame
         // that shows the edit has settled.
         if keepRun, !newSketch.isLooping { pauseHoldover = true }
+        settleReplayTitle()         // a replay belonged to the sketch that left
     }
 
     /// Start feeding per-frame stats into `stats` (for the overlay and the live
@@ -1127,6 +1155,58 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
         }
         try renderer.reloadLibrary(source: source)
         shaderErrorRelay.invalidate()   // the user shaders compile again against it
+    }
+
+    /// A run's first `setup()` and everything that belongs with it, in the one
+    /// place both drives of a live run come through: the frame loop, and a
+    /// replay's scrub, which re-simulates from frame 0 without returning to
+    /// the loop. One function, so the two cannot differ in what a first
+    /// `setup()` carries: the clock, the checkpoint, the answer to a pending
+    /// rerun.
+    private func performFirstSetup(now: CFTimeInterval) {
+        // A launch that asked to record starts its take here, ahead of
+        // `setup()`, so the take begins at the run's own frame 0.
+        if let url = OllinApp.pendingTakeRecording {
+            OllinApp.pendingTakeRecording = nil
+            takeRecordURL = url
+            attachTakeRecorder()
+            print("Ollin: recording a take to \(url.path)")
+        }
+        // A run that keeps a checkpoint gets one restore, at its first
+        // setup: the seed and the tuned parameters before `setup()` builds
+        // anything from them, the state itself after.
+        var restored: Checkpoint?
+        if checkpointInterval != nil, !didRestoreCheckpoint {
+            didRestoreCheckpoint = true
+            restored = Checkpoint.load(for: sketch)
+            restored?.applyBeforeSetup(to: sketch)
+        }
+        // Continue the clock across a keep-clock reload, or from where the
+        // saved state left it; otherwise start at zero.
+        elapsed = clockCarry ?? restored?.time ?? 0
+        clockCarry = nil
+        lastTime = now
+        // Reflect where the cursor actually is before the first frame, so a
+        // mouse-driven sketch isn't stuck reading (0, 0), and rendering a
+        // blank frame, until the pointer first moves over the window. (A
+        // replayed sketch takes no live input, this included.)
+        #if os(macOS)
+        (view as? OllinMTKView)?.seedPointer()
+        #endif
+        applyLaunchParamsBeforeSetup()
+        performSetup()
+        restored?.applyAfterSetup(to: sketch)
+        applyLaunchParams()
+        nextCheckpoint = elapsed + (checkpointInterval ?? .infinity)
+        didSetup = true
+        // A rerun asked for beside a fresh run (an asset saved with the
+        // sketch, a seed restart in the same turn) is this `setup()`:
+        // left pending, it would run a second time on the next frame.
+        pendingSetupRerun = false
+        if didReload {            // setup() just ran on a hot-swapped sketch
+            didReload = false
+            sketch.reloaded()
+        }
     }
 
     /// `setup()`, with what it throws turned into the sentence the hosts show.
@@ -1244,45 +1324,8 @@ public final class SketchRunner: NSObject, MTKViewDelegate {
 
         var owesDrawnFrame = false
         if !didSetup {
-            // A launch that asked to record starts its take here, ahead of
-            // `setup()`, so the take begins at the run's own frame 0.
-            if let url = OllinApp.pendingTakeRecording {
-                OllinApp.pendingTakeRecording = nil
-                takeRecordURL = url
-                attachTakeRecorder()
-                print("Ollin: recording a take to \(url.path)")
-            }
-            // A run that keeps a checkpoint gets one restore, at its first
-            // setup: the seed and the tuned parameters before `setup()` builds
-            // anything from them, the state itself after.
-            var restored: Checkpoint?
-            if checkpointInterval != nil, !didRestoreCheckpoint {
-                didRestoreCheckpoint = true
-                restored = Checkpoint.load(for: sketch)
-                restored?.applyBeforeSetup(to: sketch)
-            }
-            // Continue the clock across a keep-clock reload, or from where the
-            // saved state left it; otherwise start at zero.
-            elapsed = clockCarry ?? restored?.time ?? 0
-            clockCarry = nil
-            lastTime = now
-            // Reflect where the cursor actually is before the first frame, so a
-            // mouse-driven sketch isn't stuck reading (0, 0) — and rendering a
-            // blank frame — until the pointer first moves over the window.
-            #if os(macOS)
-            (view as? OllinMTKView)?.seedPointer()
-            #endif
-            applyLaunchParamsBeforeSetup()
-            performSetup()
-            restored?.applyAfterSetup(to: sketch)
-            applyLaunchParams()
-            nextCheckpoint = elapsed + (checkpointInterval ?? .infinity)
-            didSetup = true
+            performFirstSetup(now: now)
             owesDrawnFrame = true
-            if didReload {            // setup() just ran on a hot-swapped sketch
-                didReload = false
-                sketch.reloaded()
-            }
         } else if pendingSetupRerun {
             pendingSetupRerun = false
             owesDrawnFrame = true
@@ -3018,6 +3061,34 @@ public enum OllinApp {
     /// `Drawer` reads it mid-drive, hence `nonisolated(unsafe)`.
     package nonisolated(unsafe) static var isVectorExporting = false
 
+    /// The three flags above as one value: the mode a headless drive runs
+    /// under. A drive enters its own mode and leaves by putting back the one
+    /// it found, so a drive started inside another (a sketch that renders a
+    /// second sketch from its own `setup()`) neither ends the outer drive's
+    /// mode when it returns nor runs under it meanwhile. Every drive goes
+    /// through here; nothing else writes the three flags.
+    struct DriveMode {
+        var headless = false, benchmarking = false, vector = false
+
+        /// Enter a headless drive, and hand back the mode to return to.
+        static func enter(benchmarking: Bool = false, vector: Bool = false) -> DriveMode {
+            let found = DriveMode(headless: OllinApp.isRenderingHeadless,
+                                  benchmarking: OllinApp.isBenchmarking,
+                                  vector: OllinApp.isVectorExporting)
+            OllinApp.isRenderingHeadless = true
+            OllinApp.isBenchmarking = benchmarking
+            OllinApp.isVectorExporting = vector
+            return found
+        }
+
+        /// Leave the drive: the mode it was entered from is in place again.
+        func restore() {
+            OllinApp.isRenderingHeadless = headless
+            OllinApp.isBenchmarking = benchmarking
+            OllinApp.isVectorExporting = vector
+        }
+    }
+
     /// Boot a window running `sketch` and start the app; does not return. Hosts
     /// the sketch in a `SketchView` inside a SwiftUI `App` (`OllinSketchApp`) —
     /// the same lifecycle the live host and gallery use. This is the
@@ -3223,8 +3294,8 @@ public enum OllinApp {
         // (a figure run, a test suite) never returns to a run loop that would.
         try autoreleasepool { () throws -> CGImage in
             let renderer = try headlessRenderer(for: sketch, path: path)
-            isRenderingHeadless = true
-            defer { isRenderingHeadless = false }
+            let modeFound = DriveMode.enter()
+            defer { modeFound.restore() }
             renderer.automaticQuality = quality
             renderer.pathTracing = pathTracedExport
             renderer.renderScale = exportRenderScale
@@ -3529,8 +3600,8 @@ public enum OllinApp {
                               problem: "asks for \(frames) frames, and a soundtrack needs at least one")
         }
         let fps = fps.framesPerSecond
-        isRenderingHeadless = true
-        defer { isRenderingHeadless = false }
+        let modeFound = DriveMode.enter()
+        defer { modeFound.restore() }
         let size = sketch.canvasSizeForRun()
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         try sketch.runSetup()
@@ -3633,8 +3704,8 @@ public enum OllinApp {
         renderer.pathTraceReportsProgress = false   // the loop below prints its own line
         renderer.plantedDiscards = plantedDiscards
         renderer.capturesLinearFrame = capturesLinear
-        isRenderingHeadless = true
-        defer { isRenderingHeadless = false }
+        let modeFound = DriveMode.enter()
+        defer { modeFound.restore() }
 
         let size = sketch.canvasSizeForRun()
         let width = size.width, height = size.height
@@ -3935,12 +4006,8 @@ public enum OllinApp {
     /// rendering-performance change can be measured deterministically.
     static func benchmark(_ sketch: Sketch, frames: Int = 600, fps: Double = 60, gpu: Bool = false,
                           quality: RenderQuality = .default) {
-        isRenderingHeadless = true
-        isBenchmarking = true
-        defer {
-            isRenderingHeadless = false
-            isBenchmarking = false
-        }
+        let modeFound = DriveMode.enter(benchmarking: true)
+        defer { modeFound.restore() }
         let n = max(1, frames)
         let size = sketch.canvasSizeForRun()
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
@@ -4418,8 +4485,8 @@ public extension OllinApp {
             let sketch = make()
             let size = sketch.canvasSizeForRun()
             sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
-            isRenderingHeadless = true
-            defer { isRenderingHeadless = false }
+            let modeFound = DriveMode.enter()
+            defer { modeFound.restore() }
             try sketch.runSetup()
             print(ParamListing.text(for: sketch))
             return true

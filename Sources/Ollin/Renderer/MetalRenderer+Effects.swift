@@ -3093,7 +3093,10 @@ extension MetalRenderer {
         let format = format ?? linearFormat
         let (lib, hash) = userShaderLibrary(for: shader, variant: variant, format: format)
         if let p = userShaderPipelines[hash] { return (p, hash) }
-        guard let lib else { return (nil, hash) }
+        // A library that compiled under a pipeline the device refused is a
+        // failure already recorded: the library is still in its cache, so
+        // without this the device would be asked again on every frame.
+        guard let lib, userShaderErrors[hash] == nil else { return (nil, hash) }
         do {
             guard let vfn = lib.makeFunction(name: "ollin_user_vertex"),
                   let ffn = lib.makeFunction(name: "ollin_user_fragment") else {
@@ -3107,6 +3110,7 @@ extension MetalRenderer {
             desc.fragmentFunction = ffn
             desc.rasterSampleCount = 1
             desc.colorAttachments[0].pixelFormat = format
+            try noteUserPipelineBuild()
             let state = try device.makeRenderPipelineState(descriptor: desc)
             userShaderPipelines[hash] = state
             return (state, hash)
@@ -3127,6 +3131,7 @@ extension MetalRenderer {
         userShaderLibraries.removeAll()
         userShaderPipelines.removeAll()
         paintPipelines.removeAll()
+        refusedPaintPipelines.removeAll()
         userShaderErrors.removeAll()
         userShaderSources.removeAll()
         userShaderHashes.removeAll()

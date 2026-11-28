@@ -1277,6 +1277,13 @@ extension MetalRenderer {
         }
         let cacheKey = PaintPipelineKey(hash: hash, key: key)
         if let state = paintPipelines[cacheKey] { return state }
+        // A pipeline the device refused is remembered by its own key (the
+        // same shader may build under another blend or format), so it is
+        // asked for once and reported on every frame it is missing from.
+        if refusedPaintPipelines.contains(cacheKey) {
+            reportUserShaderError(hash)
+            return nil
+        }
         let vertex: String, fragment: String
         switch kind {
         case .sdf: (vertex, fragment) = ("ollin_sdf_vertex", "ollin_paint_sdf_fragment")
@@ -1284,6 +1291,7 @@ extension MetalRenderer {
         default: (vertex, fragment) = ("ollin_vertex", "ollin_paint_fragment")
         }
         do {
+            try noteUserPipelineBuild()
             let state = try makePipeline(vertex: vertex, fragment: fragment, using: library,
                                          premultiplied: false, blend: key.blend,
                                          depthFormat: key.depthFormat,
@@ -1298,6 +1306,7 @@ extension MetalRenderer {
                 + "the paint pipeline could not be built: \((error as NSError).localizedDescription)"
             userShaderErrors[hash] = ShaderCompileError(message: message,
                                                         raw: (error as NSError).localizedDescription)
+            refusedPaintPipelines.insert(cacheKey)
             reportUserShaderError(hash)
             return nil
         }

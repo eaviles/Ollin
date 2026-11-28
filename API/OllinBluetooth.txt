@@ -55,6 +55,7 @@ final class BluetoothDevice: Sendable
   var characteristics: [BluetoothCharacteristic] { get }
   var isAvailable: Bool { get }
   var isConnected: Bool { get }
+  var lastError: String? { get }
   var name: String? { get }
   var radioState: BluetoothRadioState { get }
   var signal: Int? { get }

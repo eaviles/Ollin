@@ -170,7 +170,7 @@ struct WeatherTests {
         #expect(weather.cloudCover == 0.98)
         #expect(weather.isDay == true)
         #expect(weather.updateCount == 1)
-        #expect(weather.problem == nil)
+        #expect(weather.lastError == nil)
         #expect(weather.isRunning)
         // No name was given, so nothing was looked up.
         #expect(StubServer.asks(at: lookupPath).isEmpty)
@@ -208,7 +208,7 @@ struct WeatherTests {
         // The forecast was asked at the place the lookup found, not nowhere.
         #expect(reading.name == "Oaxaca City, Oaxaca, Mexico")
         #expect(reading.timeZone?.identifier == "America/Mexico_City")
-        #expect(weather.problem == nil)
+        #expect(weather.lastError == nil)
     }
 
     @Test func aNameNothingMatchesSaysSo() async throws {
@@ -216,7 +216,7 @@ struct WeatherTests {
                                                       lookup: #"{"generationtime_ms":0.4}"#)
         defer { weather.stop() }
         weather.start()
-        let problem = try await waitFor { weather.problem }
+        let problem = try await waitFor { weather.lastError }
         #expect(problem == "no place named Nowhere Particular")
         #expect(weather.reading == nil)
         #expect(StubServer.asks(at: forecastPath).isEmpty)
@@ -230,7 +230,7 @@ struct WeatherTests {
 
         StubServer.answer(StubServer.Answer(status: 503), at: forecastPath)
         weather.refresh()
-        let problem = try await waitFor { weather.problem }
+        let problem = try await waitFor { weather.lastError }
         #expect(problem == "the server answered 503")
         #expect(weather.temperature == 17.8)
         #expect(weather.failureCount == 1)

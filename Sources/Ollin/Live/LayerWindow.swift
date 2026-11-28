@@ -84,7 +84,7 @@ final class LayerWindowPane: NSObject, NSWindowDelegate {
     /// window went away): take it down and say so on the value the sketch holds.
     func close() {
         sketchWindow.onClose = nil
-        sketchWindow.isOpen = false
+        sketchWindow.wentAway(dismissed: false)
         tearDown()
     }
 
@@ -97,9 +97,7 @@ final class LayerWindowPane: NSObject, NSWindowDelegate {
     /// The person closed the window: it is not opened again for this sketch.
     func windowWillClose(_ notification: Notification) {
         sketchWindow.onClose = nil
-        sketchWindow.isDismissed = true
-        sketchWindow.isOpen = false
-        sketchWindow.mouseIsPressed = false
+        sketchWindow.wentAway(dismissed: true)
     }
 }
 

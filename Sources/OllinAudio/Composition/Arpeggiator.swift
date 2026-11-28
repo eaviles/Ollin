@@ -34,8 +34,18 @@ public struct Arpeggiator: Sendable, Hashable {
     public var notes: [Pitch] {
         didSet {
             guard notes != oldValue, !notes.isEmpty else { return }
-            if oldValue.isEmpty { cursor = 0 }
-            latched = notes
+            if oldValue.isEmpty {
+                // A new chord after every key was up.
+                cursor = 0
+                latched = notes
+            } else {
+                // The chord the hold keeps is every key that went down since
+                // then. A key coming up does not leave it (fingers never
+                // leave a chord in the same instant, so it would otherwise
+                // shrink to the last one up), and a key going down while
+                // another is still held joins it.
+                for pitch in notes where !latched.contains(pitch) { latched.append(pitch) }
+            }
         }
     }
 
@@ -63,7 +73,10 @@ public struct Arpeggiator: Sendable, Hashable {
     /// Off, silence follows the last release. On, the figure carries on
     /// until a new note is held, which then starts a new chord: the hold
     /// switch on a hardware arpeggiator.
-    public var latches: Bool
+    public var latches: Bool {
+        // Switched on, the hold takes the keys that are down now.
+        didSet { if latches, !oldValue { latched = notes } }
+    }
 
     /// Which sequence ``Arpeggio/Pattern/random`` picks.
     public var seed: Int
@@ -72,7 +85,8 @@ public struct Arpeggiator: Sendable, Hashable {
     /// jumped rather than passed. Sixteen by default; see ``StepCounter``.
     public var maxCatchUp: Int
 
-    /// The last chord held, which is what plays on while latched.
+    /// The chord the hold keeps: every key that went down since all of them
+    /// were last up, in the order they arrived.
     private var latched: [Pitch]
     /// Which note of the figure comes next.
     private var cursor = 0
@@ -143,10 +157,11 @@ public struct Arpeggiator: Sendable, Hashable {
         notes.removeAll { $0 == pitch }
     }
 
-    /// The notes the figure is playing right now: what is held, or the last
-    /// chord while latched. Empty when it is silent.
+    /// The notes the figure is playing right now: what is held, or, while
+    /// it latches, the whole chord since every key was last up. Empty when it
+    /// is silent.
     public var playing: [Pitch] {
-        notes.isEmpty && latches ? latched : notes
+        latches ? latched : notes
     }
 
     /// The figure as it stands, worked out from ``playing``, so a sketch can

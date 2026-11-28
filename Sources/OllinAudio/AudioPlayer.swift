@@ -36,7 +36,7 @@ public final class AudioPlayer: AudioSource {
     // fractional so any fps divides cleanly.
     private var headlessPlaying = false
     private var headlessArmed = false
-    private var headlessPosition = 0.0
+    private(set) var headlessPosition = 0.0
 
     /// Whether playback should restart from the top when it reaches the end.
     /// Take effect on the next `play()`.
@@ -88,14 +88,26 @@ public final class AudioPlayer: AudioSource {
         engine.connect(player, to: engine.mainMixerNode, format: format)
     }
 
-    /// Starts (or restarts) playback from the beginning, analyzing as it plays.
+    /// Where playback stands, which is what decides whether `play()` carries
+    /// on or starts from the top.
+    private enum Transport { case stopped, playing, paused }
+    private var transport = Transport.stopped
+    /// Whether the buffer the node holds was scheduled to loop.
+    private var scheduledLooping = false
+
+    /// Starts playback, analyzing as it plays. After a `pause()` it carries
+    /// on from where the pause left it. Otherwise it starts from the top: on
+    /// a file that is playing (so a sound can be struck again), after a
+    /// `stop()`, and on a file that has played out.
     /// An engine that will not start leaves `isPlaying` false and says why in
     /// `unavailableReason`.
     public func play() {
+        let resumes = transport == .paused && !hasPlayedOut
         if OllinApp.isRenderingHeadless {
-            headlessPosition = 0
+            if !resumes { headlessPosition = 0 }
             headlessPlaying = true
             headlessArmed = true
+            transport = .playing
             return
         }
         installTapIfNeeded()
@@ -109,9 +121,12 @@ public final class AudioPlayer: AudioSource {
             }
         }
         unavailableReason = nil
-        player.stop()
-        scheduleBuffer()
+        if !resumes {
+            player.stop()
+            scheduleBuffer()
+        }
         player.play()
+        transport = .playing
     }
 
     /// Why nothing plays, in a sentence worth drawing, or `nil` while the
@@ -119,14 +134,20 @@ public final class AudioPlayer: AudioSource {
     /// and the next one that succeeds clears it.
     public private(set) var unavailableReason: String?
 
-    /// Pauses playback, keeping the position.
+    /// Pauses playback, keeping the position: the next `play()` carries on
+    /// from here.
     public func pause() {
+        guard transport == .playing else { return }
+        transport = .paused
         headlessPlaying = false
+        pausedAt = livePosition         // the node cannot be asked once it is paused
         player.pause()
     }
 
-    /// Stops playback and tears down the tap.
+    /// Stops playback and tears down the tap. The next `play()` starts from
+    /// the top.
     public func stop() {
+        transport = .stopped
         headlessPlaying = false
         headlessPosition = 0
         player.stop()
@@ -137,8 +158,33 @@ public final class AudioPlayer: AudioSource {
         engine.stop()
     }
 
+    /// How far the live node had played when it was paused, in seconds.
+    private(set) var pausedAt: Double?
+
+    /// How far the live node has played into its buffer, in seconds, or nil
+    /// while it is not playing. A looping buffer counts on past its length.
+    var livePosition: Double? {
+        guard let nodeTime = player.lastRenderTime,
+              let time = player.playerTime(forNodeTime: nodeTime), time.sampleRate > 0 else { return nil }
+        return Double(time.sampleTime) / time.sampleRate
+    }
+
+    /// Whether the file has reached its end, so there is nothing after a
+    /// pause to carry on with. A looping file never has.
+    private var hasPlayedOut: Bool {
+        let rate = buffer.format.sampleRate
+        guard rate > 0 else { return true }
+        let length = Double(buffer.frameLength) / rate
+        if OllinApp.isRenderingHeadless {
+            return !loops && headlessPosition / rate >= length
+        }
+        guard !scheduledLooping, let position = pausedAt else { return false }
+        return position >= length
+    }
+
     private func scheduleBuffer() {
         let options: AVAudioPlayerNodeBufferOptions = loops ? [.loops, .interrupts] : [.interrupts]
+        scheduledLooping = loops
         player.scheduleBuffer(buffer, at: nil, options: options)
     }
 

@@ -87,7 +87,7 @@ device.start()                       // begins connecting; safe to call once
 
 device.isRunning                   // Bool, frames currently arriving
 device.isLive                      // Bool, true on the cable and false playing a recording
-device.waitingMessage                // a notice reflecting the live connection state
+device.waitingMessage                // a notice reflecting the live connection state, or what to call when it was never started
 device.latestBody                    // PhoneBody?, the tracked skeleton (Body mode)
 device.latestBodies                  // [PhoneBody], every tracked body (= one today)
 device.latestFaces                   // [PhoneFace], every tracked face, up to 3 (Face mode)

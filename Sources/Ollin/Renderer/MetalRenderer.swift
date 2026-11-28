@@ -788,6 +788,9 @@ final class MetalRenderer {
     /// against one geometry pipeline's blend, depth, stencil, and color format.
     struct PaintPipelineKey: Hashable { let hash: UInt64; let key: PipelineKey }
     var paintPipelines: [PaintPipelineKey: MTLRenderPipelineState] = [:]
+    /// The paint pipelines the device refused to build, so each is asked for
+    /// once. Emptied with the other user-shader caches.
+    var refusedPaintPipelines: Set<PaintPipelineKey> = []
     /// The samplers a simulation field's edge rule binds for its step passes, keyed by
     /// `FieldEdge` (bit 0 wraps x, bit 1 wraps y): the image sampler's filtering with
     /// the address mode the field asked for, so a tap past the border wraps or clamps
@@ -800,6 +803,18 @@ final class MetalRenderer {
     var userShaderLibraries: [UInt64: MTLLibrary] = [:]
     var userShaderPipelines: [UInt64: MTLRenderPipelineState] = [:]
     var userShaderErrors: [UInt64: ShaderCompileError] = [:]
+    /// How many times a user shader's pipeline has been asked of the device,
+    /// and a failure a test plants there: a library that compiles under a
+    /// pipeline that will not build is not something a short shader can be
+    /// made to do, and it is the case the two caches have to agree on.
+    var userPipelineBuilds = 0
+    var plantedUserPipelineFailure = false
+    struct PlantedPipelineFailure: Error {}
+    /// One attempt at building a user shader's pipeline, counted.
+    func noteUserPipelineBuild() throws {
+        userPipelineBuilds += 1
+        if plantedUserPipelineFailure { throw PlantedPipelineFailure() }
+    }
     /// The composed-source hash a shader's own text, file, modules, variant and
     /// output format lead to, so an encode never composes or hashes the spliced
     /// library again for a shader it has already seen.
@@ -4050,6 +4065,10 @@ final class MetalRenderer {
     /// buffer left half-written, and make its stateful passes run rather than
     /// serve the discarded encode's results as a same-frame repeat.
     private func forgetHistoriesForRedraw() {
+        // The reflection pass's history slots are not in this list on
+        // purpose: a frame that holds that pass builds on the frame before
+        // (`Drawer.usesFeedback`), so `canRedraw` refuses it and this never
+        // runs with a slot the lost attempt touched.
         taaHistory = nil
         rtReflectHistory = nil
         causticsHistory = nil

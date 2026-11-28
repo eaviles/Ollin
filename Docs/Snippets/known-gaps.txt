@@ -791,21 +791,21 @@ b2be1fcf6add  Docs/Helpers/Animation.md:327  cannot find 'noisy' in scope
 340f89d95270  Docs/Helpers/Animation.md:380  cannot find 'x' in scope
 476cfba14ab9  Docs/Helpers/Animation.md:61  expected ',' separator
 566254870042  Docs/Helpers/Animation.md:98  expected ',' separator
-89fac67e9339  Docs/Helpers/Audio.md:123  expected '{' in body of function declaration
-16eb10b4a5c4  Docs/Helpers/Audio.md:130  unary operator cannot be separated from its operand
-a64ccfb3bf3e  Docs/Helpers/Audio.md:148  expected '{' in body of function declaration
-7f1a56ba71ef  Docs/Helpers/Audio.md:163  cannot find 'tone' in scope
-17ad9932e566  Docs/Helpers/Audio.md:179  expected '{' in body of function declaration
-0793adb933ae  Docs/Helpers/Audio.md:189  cannot find 'source' in scope
-8baa306b8120  Docs/Helpers/Audio.md:198  cannot find 'source' in scope
-07dc4d1d581d  Docs/Helpers/Audio.md:204  cannot find 'source' in scope
-cb85bedb873a  Docs/Helpers/Audio.md:229  cannot find 'mic' in scope
-d038472b7a0a  Docs/Helpers/Audio.md:239  cannot find 'source' in scope
-76a6d2e6b814  Docs/Helpers/Audio.md:259  cannot find 'ptr' in scope
+138cb1923595  Docs/Helpers/Audio.md:102  expected '{' in body of function declaration
+89fac67e9339  Docs/Helpers/Audio.md:127  expected '{' in body of function declaration
+16eb10b4a5c4  Docs/Helpers/Audio.md:134  unary operator cannot be separated from its operand
+a64ccfb3bf3e  Docs/Helpers/Audio.md:152  expected '{' in body of function declaration
+7f1a56ba71ef  Docs/Helpers/Audio.md:167  cannot find 'tone' in scope
+17ad9932e566  Docs/Helpers/Audio.md:183  expected '{' in body of function declaration
+0793adb933ae  Docs/Helpers/Audio.md:193  cannot find 'source' in scope
+8baa306b8120  Docs/Helpers/Audio.md:202  cannot find 'source' in scope
+07dc4d1d581d  Docs/Helpers/Audio.md:208  cannot find 'source' in scope
+cb85bedb873a  Docs/Helpers/Audio.md:233  cannot find 'mic' in scope
+d038472b7a0a  Docs/Helpers/Audio.md:243  cannot find 'source' in scope
+76a6d2e6b814  Docs/Helpers/Audio.md:263  cannot find 'ptr' in scope
 d84e8726dda1  Docs/Helpers/Audio.md:46  expected '{' in body of function declaration
-50a5507e3270  Docs/Helpers/Audio.md:66  'throws' may only occur before '->'
-f3861249dc5b  Docs/Helpers/Audio.md:79  call can throw, but errors cannot be thrown out of a property initializer
-138cb1923595  Docs/Helpers/Audio.md:98  expected '{' in body of function declaration
+50a5507e3270  Docs/Helpers/Audio.md:68  'throws' may only occur before '->'
+f3861249dc5b  Docs/Helpers/Audio.md:83  call can throw, but errors cannot be thrown out of a property initializer
 1386e5c3ac76  Docs/Helpers/Complex.md:32  expected ',' separator
 eecd805c7383  Docs/Helpers/Composition.md:11  overriding non-open property outside of its defining module
 ae33f1820696  Docs/Helpers/Composition.md:114  cannot convert value of type '(Double, Double) -> Double' to expected argument type 'Int'
@@ -871,7 +871,7 @@ d7ff958d42d5  Docs/Helpers/Listening.md:107  cannot find 'ears' in scope
 4d25b9462e40  Docs/Helpers/Listening.md:7  cannot find 'flash' in scope
 75ac024f0f27  Docs/Helpers/Listening.md:85  cannot find 'speech' in scope
 bfa36d7f3c9e  Docs/Helpers/Listening.md:99  cannot find 'ears' in scope
-7e385a7a9868  Docs/Helpers/LiveData.md:106  cannot find 'tide' in scope
+0041c3da315a  Docs/Helpers/LiveData.md:106  cannot find 'tide' in scope
 278ccd66b9f4  Docs/Helpers/LiveData.md:147  expected ',' separator
 79b337570444  Docs/Helpers/LiveData.md:156  cannot find 'splash' in scope
 6fc90afe47b2  Docs/Helpers/LiveData.md:188  cannot find 'edits' in scope
@@ -942,19 +942,19 @@ f7bf5ddf5ce5  Docs/Helpers/Synthesis.md:969  cannot find 'synth' in scope
 5ecdb5057d19  Docs/Helpers/Synthesis.md:987  reference to member 'custom' cannot be resolved without a contextual type
 c190ec5bfb0a  Docs/Helpers/Weather.md:123  expected ',' separator
 9b223ddfebe9  Docs/Helpers/Weather.md:129  cannot find 'place' in scope
-6a7b53bf1b5a  Docs/Helpers/Weather.md:150  cannot find 'sky' in scope
+9d603649dae6  Docs/Helpers/Weather.md:150  cannot find 'sky' in scope
 da35c6b24532  Docs/Helpers/Weather.md:29  expected ',' separator
-04a79c82aa49  Docs/Integration/Bluetooth.md:118  cannot find 'device' in scope
-85b846be3156  Docs/Integration/Bluetooth.md:145  cannot find 'myUUID' in scope
-30cde480d6cf  Docs/Integration/Bluetooth.md:157  cannot find 'device' in scope
-43bd50b1d16e  Docs/Integration/Bluetooth.md:185  cannot find 'strap' in scope
-d5f255961456  Docs/Integration/Bluetooth.md:200  cannot find 'device' in scope
+04a79c82aa49  Docs/Integration/Bluetooth.md:121  cannot find 'device' in scope
+85b846be3156  Docs/Integration/Bluetooth.md:148  cannot find 'myUUID' in scope
+30cde480d6cf  Docs/Integration/Bluetooth.md:160  cannot find 'device' in scope
+43bd50b1d16e  Docs/Integration/Bluetooth.md:188  cannot find 'strap' in scope
+d5f255961456  Docs/Integration/Bluetooth.md:203  cannot find 'device' in scope
 d7d8fd9b9b0d  Docs/Integration/Bluetooth.md:49  cannot find 'device' in scope
 6d023e330457  Docs/Integration/Bluetooth.md:86  cannot find 'savedIdentifier' in scope
-75882433fd95  Docs/Integration/Bluetooth.md:99  cannot find 'device' in scope
+3ef7fa182e56  Docs/Integration/Bluetooth.md:99  cannot find 'device' in scope
 9ba26d0ee7f0  Docs/Integration/Controller.md:11  '@main' attribute cannot be applied to this declaration
-d850fab201e9  Docs/Integration/Controller.md:175  argument passed to call that takes no arguments
-d9384dec8a99  Docs/Integration/Controller.md:84  cannot find 'position' in scope
+d850fab201e9  Docs/Integration/Controller.md:179  argument passed to call that takes no arguments
+d9384dec8a99  Docs/Integration/Controller.md:88  cannot find 'position' in scope
 7a4ee38fcdce  Docs/Integration/DMX.md:127  expected parameter name followed by ':'
 f758436b563c  Docs/Integration/DMX.md:159  expected '{' in body of function declaration
 3768bca73f76  Docs/Integration/DMX.md:201  expected '{' in body of function declaration
@@ -1025,10 +1025,10 @@ e15ad158f539  Docs/Integration/Room.md:155  cannot find 'room' in scope
 c22b87bc3cc9  Docs/Integration/Room.md:92  cannot find 'room' in scope
 635f5b6b7525  Docs/Integration/Room.md:99  cannot find 'room' in scope
 afc0d297ce45  Docs/Integration/ScreenCapture.md:106  cannot find 'screen' in scope
-df1ca7fe7d89  Docs/Integration/ScreenCapture.md:118  'async' call in a function that does not support concurrency
-c67e0244b3e3  Docs/Integration/ScreenCapture.md:144  cannot find 'screen' in scope
-92f32c6a0d4c  Docs/Integration/ScreenCapture.md:150  cannot find 'screen' in scope
-06a8d90c3f1e  Docs/Integration/ScreenCapture.md:162  cannot find 'screen' in scope
+df1ca7fe7d89  Docs/Integration/ScreenCapture.md:120  'async' call in a function that does not support concurrency
+c67e0244b3e3  Docs/Integration/ScreenCapture.md:146  cannot find 'screen' in scope
+92f32c6a0d4c  Docs/Integration/ScreenCapture.md:152  cannot find 'screen' in scope
+06a8d90c3f1e  Docs/Integration/ScreenCapture.md:164  cannot find 'screen' in scope
 3c8c146ea4e2  Docs/Integration/ScreenCapture.md:66  cannot find 'screen' in scope
 d0e0b4be4d42  Docs/Integration/ScreenCapture.md:90  cannot find 'displayID' in scope
 441c9d7cac54  Docs/Integration/Serial.md:102  cannot find 'serial' in scope

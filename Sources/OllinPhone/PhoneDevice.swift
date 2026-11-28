@@ -714,7 +714,12 @@ public final class PhoneDevice: FrameSource, VideoFeed {
     /// (no device, refused, reconnecting). For a recording it says why nothing
     /// is playing.
     public var waitingMessage: String {
-        guard recording != nil else { return reader.statusMessage ?? "Connecting to the phone…" }
+        guard recording != nil else {
+            // A device nobody started is not connecting, and one that was
+            // stopped is not reconnecting: say what to do instead.
+            guard isStarted else { return "Call start() to read the phone." }
+            return reader.statusMessage ?? "Connecting to the phone…"
+        }
         if !isFeeding { return "Call start() to play the recording." }
         return "The recording is not playing. Keep the device in a property of the sketch."
     }
@@ -928,6 +933,7 @@ final class PhoneStreamReader: @unchecked Sendable {
             let fd = state.fd
             state.fd = -1
             state.connected = false
+            state.message = nil     // what a stopped reader last ran into is not news
             return fd
         }
         touches.releaseAll()
@@ -944,7 +950,12 @@ final class PhoneStreamReader: @unchecked Sendable {
             do {
                 fd = try USBMux.connect(toPort: port)
             } catch {
-                lock.withLock { $0.connected = false; $0.message = Self.message(for: error) }
+                // A connection attempt still in flight when `stop()` ran
+                // leaves no sentence behind for the next start to open on.
+                lock.withLock {
+                    $0.connected = false
+                    if $0.running { $0.message = Self.message(for: error) }
+                }
                 Thread.sleep(forTimeInterval: 1.0)
                 continue
             }

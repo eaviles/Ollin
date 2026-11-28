@@ -215,7 +215,7 @@ final class Outside: Sketch {
                 textSize(13)
                 fill(Color(white: 1).withAlpha(0.5))
                 drawText(status(), 28, 52)
-            } else if let problem = weather.problem {
+            } else if let problem = weather.lastError {
                 drawText("Mexico City", 28, 26)
                 textSize(13)
                 fill(Color(red: 1, green: 0.55, blue: 0.45))
@@ -237,7 +237,7 @@ final class Outside: Sketch {
     }
 
     private func status() -> String {
-        if let problem = weather.problem { return "the weather is unhappy: \(problem)" }
+        if let problem = weather.lastError { return "the weather is unhappy: \(problem)" }
         guard let since = weather.timeSinceUpdate else { return "waiting" }
         return "read \(Int(since))s ago, checking every \(Int(weather.interval / 60)) min"
     }

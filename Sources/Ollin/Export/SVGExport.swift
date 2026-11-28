@@ -647,11 +647,10 @@ extension OllinApp {
     /// half of the SVG and PDF exports; never touches Metal.
     static func recordVectorFrame(of sketch: Sketch, frame: Int, fps: Double,
                                   hatching: Hatching?) throws -> VectorRecording {
-        isRenderingHeadless = true
         // The whole drive is vector-mode, setup() included, so a `Batch` recorded
         // anywhere in it captures vector commands for `drawBatch` to splice.
-        isVectorExporting = true
-        defer { isRenderingHeadless = false; isVectorExporting = false }
+        let modeFound = DriveMode.enter(vector: true)
+        defer { modeFound.restore() }
         let size = sketch.canvasSizeForRun()
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         try sketch.runSetup()

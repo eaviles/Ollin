@@ -109,6 +109,8 @@ screen.source = .app("Music")
 
 **A source that names something not on screen yet is not an error.** The capture keeps looking. It starts by itself the moment the window appears, so you can name a window and then go and open it. `isRunning` stays `true` through the wait, where it means "wanted", and `isReceiving` tells you whether frames are actually arriving. `isLive`, which every feed has, follows `isReceiving`.
 
+**`stop()` holds whenever it is called.** A stream takes a moment to come up. Stopped during that moment, the capture ends the stream as soon as it starts. Nothing goes on recording the screen behind a capture that reads as off. The same holds when `source` changes while a stream is coming up: only the stream for the new source is kept.
+
 <a name="listing-what-is-there"></a>
 
 ### Listing what is there

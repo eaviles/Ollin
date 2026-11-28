@@ -36,8 +36,17 @@ public final class VideoPlayer: FrameSource, VideoFeed, ClipPlayback {
     /// Playback speed (`1` is natural speed). Takes effect immediately while
     /// playing, otherwise on the next `play()`.
     public var rate: Double = 1 {
-        didSet { if isPlaying { player.rate = Float(rate) } }
+        didSet {
+            // Under an export the real player stays at rest (the frames come
+            // from the file by the export's clock, which reads `rate` itself);
+            // setting its rate there would start it, sound and all.
+            if !OllinApp.isRenderingHeadless, isPlaying { player.rate = Float(rate) }
+        }
     }
+
+    /// The rate the real player is running at, for the tests: under an
+    /// export it has to stay at rest whatever the sketch sets.
+    var livePlayerRate: Float { player.rate }
 
     /// Audio volume, `0…1`.
     public var volume: Double {

@@ -222,8 +222,8 @@ extension OllinApp {
     public static func exportEXR(_ sketch: Sketch, to path: String, frame: Int = 0,
                                  fps: FrameRate = 60, quality: RenderQuality = .detail) throws {
         let renderer = try headlessRenderer(for: sketch, path: path)
-        isRenderingHeadless = true
-        defer { isRenderingHeadless = false }
+        let modeFound = DriveMode.enter()
+        defer { modeFound.restore() }
         renderer.automaticQuality = quality
         renderer.pathTracing = pathTracedExport
         renderer.renderScale = exportRenderScale

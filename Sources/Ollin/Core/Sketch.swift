@@ -1224,9 +1224,22 @@ open class Sketch {
 
     private func runCameraMove(_ move: CameraMove, near: Double, far: Double) {
         cameraRig.driver = .move
-        cameraRig.updateMove(move, dt: deltaTime)
-        cameraRig.applyViewSnap(dt: deltaTime)
+        if takesRigStep() {
+            cameraRig.updateMove(move, dt: deltaTime)
+            cameraRig.applyViewSnap(dt: deltaTime)
+        }
         camera(cameraRig.makeCamera(near: near, far: far))
+    }
+
+    /// Whether the rig still has this frame's step to take. A frame may ask
+    /// the rig for its camera more than once (on the canvas and again inside
+    /// a layer, for the same view): the rig moves once, and every ask in the
+    /// frame is handed the same pose. Stepped per ask, two asks would run
+    /// the motion at twice its speed and take a scroll twice.
+    private func takesRigStep() -> Bool {
+        if cameraRig.steppedFrame == frameCount { return false }
+        cameraRig.steppedFrame = frameCount
+        return true
     }
 
     /// Let the viewer move the camera by hand: drag to orbit the object, scroll to
@@ -1256,8 +1269,10 @@ open class Sketch {
                                 leftPressed: mouseIsPressed, rightPressed: rightMouseIsPressed,
                                 modifiers: modifiers, scrollDeltaY: scrollDeltaY,
                                 pinchScale: pinchScale)
-        cameraRig.updateControl(input: input, dt: deltaTime, viewportHeight: height)
-        cameraRig.applyViewSnap(dt: deltaTime)
+        if takesRigStep() {
+            cameraRig.updateControl(input: input, dt: deltaTime, viewportHeight: height)
+            cameraRig.applyViewSnap(dt: deltaTime)
+        }
         camera(cameraRig.makeCamera(near: near, far: far))
     }
 
@@ -1294,10 +1309,12 @@ open class Sketch {
                                 leftPressed: mouseIsPressed, rightPressed: rightMouseIsPressed,
                                 modifiers: modifiers, scrollDeltaY: scrollDeltaY,
                                 pinchScale: pinchScale)
-        cameraRig.updateInteractiveMove(move, input: input, dt: deltaTime,
-                                        viewportHeight: height, idleTimeout: idleReturn,
-                                        returnDuration: returnDuration)
-        cameraRig.applyViewSnap(dt: deltaTime)
+        if takesRigStep() {
+            cameraRig.updateInteractiveMove(move, input: input, dt: deltaTime,
+                                            viewportHeight: height, idleTimeout: idleReturn,
+                                            returnDuration: returnDuration)
+            cameraRig.applyViewSnap(dt: deltaTime)
+        }
         camera(cameraRig.makeCamera(near: near, far: far))
     }
 

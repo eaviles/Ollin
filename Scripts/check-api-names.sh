@@ -67,6 +67,12 @@
 #                reports isConnected and is undone by disconnect(), publish
 #                reports isPublishing; close() tears down a connection and
 #                stop() stops something that runs.
+#   failure      What last went wrong, readable afterwards, is `lastError`
+#                (cleared when the thing works again); what stops it running
+#                at all is `unavailableReason`. A readable `problem: String?`
+#                is the first of those under another word. The `problem` a
+#                thrown error carries is a field of the error, not a property
+#                to poll, and is not Optional.
 #   draining     A poll-and-clear read is a plural noun (messages(), lines());
 #                drain…/pending… are not.
 #   listing      A listing that goes and asks the outside world is available…()
@@ -412,6 +418,10 @@ for d in decls:
                 if not sibling:
                     fail("destination", d, f"`{d.spelled}` takes only a URL; a destination a sketch names is a String path")
                 break
+
+    # failure
+    if d.kind == "var" and d.name == "problem" and re.match(r"^:?\s*String\?\s*(\{|$)", d.rest.strip()):
+        fail("failure", d, "`problem`: the last thing that went wrong is `lastError`")
 
     # draining
     if d.kind == "func" and re.match(r"^(?:drain|pending)[A-Z]", d.name):

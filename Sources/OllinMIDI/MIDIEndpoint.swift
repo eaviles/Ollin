@@ -44,4 +44,20 @@ public struct MIDIEndpoint: Sendable, Identifiable, Hashable {
 public enum MIDIError: Error, Sendable {
     /// A Core MIDI call failed; carries the underlying `OSStatus`.
     case coreMIDI(OSStatus)
+    /// No destination to open an output on: none whose name contains
+    /// `matching`, or, with `nil`, none attached at all.
+    case noDestination(matching: String?)
+}
+
+extension MIDIError: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .coreMIDI(let status):
+            return "Core MIDI answered \(status)"
+        case .noDestination(let match?):
+            return "no MIDI destination has \"\(match)\" in its name"
+        case .noDestination(nil):
+            return "no MIDI destination is attached"
+        }
+    }
 }

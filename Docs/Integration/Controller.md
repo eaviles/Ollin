@@ -71,6 +71,10 @@ way and does nothing in particular, so you do not need a check at every call
 site. Ask `isConnected` when it matters, which is usually to tell someone to
 plug a controller in.
 
+A controller with no sticks and triggers to read (a remote, a small pad with
+only a direction pad and two buttons) is not a player. It takes no player
+number, so the first full controller is player one whatever else is paired.
+
 An empty slot names no `unavailableReason`, because having no controller
 attached is not a fault. Something that is genuinely wrong does name one, and
 [exports](#exports) covers that case.

@@ -55,7 +55,7 @@ Two things in that sketch are worth noticing. Nothing starts the audio, because 
 Synth(_ voice: Voice = .pluck, polyphony: Int = 16, fftSize: Int = 1024)
 ```
 
-That makes an instrument. `polyphony` is how many notes may sound at once, tails included.
+That makes an instrument. `polyphony` is how many notes may sound at once, tails included. When every voice is busy, a new note takes the voice of a note that has already been let go, the quietest of them first, and only then the oldest note still being played. A note given a length counts as played until its length runs out, so a run of timed notes gives up its oldest, never the one that just started.
 
 You ask for a note in one of two ways. If you give it a length, it lets go by itself:
 

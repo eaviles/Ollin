@@ -85,7 +85,7 @@ final class WeatherRose: Sketch {
         drawShape(Shape(rose(at: middle, radius: radius * throb, turn: turn)))
 
         // A feed that cannot reach its server says so, and keeps its last reading.
-        if let problem = sky.problem {
+        if let problem = sky.lastError {
             noStroke()
             fill(ink)
             textSize(22)

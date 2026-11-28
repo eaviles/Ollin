@@ -51,7 +51,7 @@ final class Edits: Sketch {
 
         drawLegend()
         if seen == 0 {
-            if let problem = feed.problem { return drawStatus(problem, style: .warning) }
+            if let problem = feed.lastError { return drawStatus(problem, style: .warning) }
             return drawStatus("Waiting for somebody, somewhere, to save an edit…")
         }
     }
@@ -131,7 +131,7 @@ final class Edits: Sketch {
     }
 
     private func status() -> String {
-        if let problem = feed.problem { return "redialing: \(problem)" }
+        if let problem = feed.lastError { return "redialing: \(problem)" }
         if let since = feed.timeSinceUpdate {
             return "listening, the last edit landed \(Int(since))s ago"
         }

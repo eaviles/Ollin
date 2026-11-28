@@ -465,7 +465,7 @@ struct PushFeedTests {
         first.deliver(.closed("the connection closed"))
         #expect(!feed.isConnected)
         #expect(feed.failureCount == 1)
-        #expect(feed.problem == "the connection closed")
+        #expect(feed.lastError == "the connection closed")
         #expect(feed.text == "a")           // a drop never clears what arrived
 
         // The redial makes a fresh transport, and the greeting is said to it
@@ -475,7 +475,7 @@ struct PushFeedTests {
         #expect(second.sent == [#"{"op": "subscribe"}"#])
         second.deliver(.message(Data("b".utf8), isText: true, event: nil, id: nil))
         #expect(feed.failureCount == 0)
-        #expect(feed.problem == nil)
+        #expect(feed.lastError == nil)
     }
 
     @Test func aDeadConnectionOnlyCountsOnce() async throws {
@@ -539,7 +539,7 @@ struct PushFeedTests {
         carrier.transports[0].deliver(.opened)
         carrier.transports[0].deliver(.ended("the server ended the stream"))
         #expect(!feed.isRunning)
-        #expect(feed.problem == "the server ended the stream")
+        #expect(feed.lastError == "the server ended the stream")
 
         try await Task.sleep(nanoseconds: 1_500_000_000)
         #expect(carrier.transports.count == 1)   // no redial: it was asked to stop
@@ -574,7 +574,7 @@ struct PushFeedTests {
         defer { feed.stop() }
         feed.start()
 
-        let problem = try await waitFor { feed.problem }
+        let problem = try await waitFor { feed.lastError }
         #expect(problem.contains("not an address"))
         #expect(carrier.transports.isEmpty)
         #expect(feed.updateCount == 0)
@@ -607,7 +607,7 @@ struct PushFeedTests {
         #expect(messages[0].json["mag"].number == 5)
         #expect(messages[1].event == nil)
         #expect(feed.isConnected)
-        #expect(feed.problem == nil)
+        #expect(feed.lastError == nil)
 
         let ask = StreamStub.asks(at: path)[0]
         #expect(ask.headers["accept"] == "text/event-stream")
@@ -660,7 +660,7 @@ struct PushFeedTests {
 
         feed.start()
         _ = try await waitFor { feed.isRunning ? nil : true }
-        #expect(feed.problem == "the server ended the stream")
+        #expect(feed.lastError == "the server ended the stream")
 
         try await Task.sleep(nanoseconds: 1_500_000_000)
         #expect(StreamStub.asks(at: path).count == 1)   // asked to stop, so it did
@@ -690,7 +690,7 @@ struct PushFeedTests {
         defer { feed.stop() }
 
         feed.start()
-        let problem = try await waitFor { feed.problem }
+        let problem = try await waitFor { feed.lastError }
         #expect(problem.contains("503"))
         #expect(!feed.isConnected)
     }

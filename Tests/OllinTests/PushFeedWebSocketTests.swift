@@ -171,7 +171,7 @@ struct PushFeedWebSocketTests {
         #expect(feed.json["place"].text == "Oaxaca")
         #expect(feed.text == #"{"mag": 5, "place": "Oaxaca"}"#)
         #expect(feed.isConnected)
-        #expect(feed.problem == nil)
+        #expect(feed.lastError == nil)
         #expect(feed.failureCount == 0)
     }
 
@@ -252,7 +252,7 @@ struct PushFeedWebSocketTests {
         feed.start()
         _ = try await waitFor { feed.isConnected ? true : nil }
         server.hangUp(on: 0)
-        let problem = try await waitFor { feed.problem }
+        let problem = try await waitFor { feed.lastError }
         #expect(feed.failureCount >= 1)
         // The close frame's own code, not the socket's error after it.
         #expect(problem == "the server closed the connection (code 1000)")
@@ -262,7 +262,7 @@ struct PushFeedWebSocketTests {
         server.say("{\"back\": true}", to: 1)
         _ = try await waitFor { feed.updateCount >= 1 ? true : nil }
         #expect(feed.failureCount == 0)
-        #expect(feed.problem == nil)
+        #expect(feed.lastError == nil)
     }
 
     @Test func aCloseWithAReasonSaysTheReason() async throws {
@@ -274,7 +274,7 @@ struct PushFeedWebSocketTests {
         feed.start()
         _ = try await waitFor { feed.isConnected ? true : nil }
         server.hangUp(on: 0, code: .protocolCode(.policyViolation), reason: "no key on this request")
-        let problem = try await waitFor { feed.problem }
+        let problem = try await waitFor { feed.lastError }
         #expect(problem == "the server closed the connection (code 1008): no key on this request")
     }
 
@@ -313,7 +313,7 @@ struct PushFeedWebSocketTests {
         let feed = PushFeed("ws://127.0.0.1:\(port)/live", retryEvery: 1)
         defer { feed.stop() }
         feed.start()
-        let problem = try await waitFor { feed.problem }
+        let problem = try await waitFor { feed.lastError }
         #expect(!problem.isEmpty)
         #expect(feed.failureCount >= 1)
         #expect(!feed.isConnected)

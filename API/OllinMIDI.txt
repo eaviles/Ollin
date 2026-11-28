@@ -1,7 +1,9 @@
 // OllinMIDI: the public surface, written by Scripts/api-surface.sh.
 // Change the source, then run it with --record; never edit this file by hand.
-enum MIDIError: Error, Sendable
+enum MIDIError: CustomStringConvertible, Error, Sendable
   case coreMIDI(Darwin.OSStatus)
+  case noDestination(matching: String?)
+  var description: String { get }
 final class MIDIInput: Sendable
   func availableSources() -> [MIDIEndpoint]
   func bind(controlChange: Int, to: Param<Double>, channel: Int? = default, from: ClosedRange<Double> = default)

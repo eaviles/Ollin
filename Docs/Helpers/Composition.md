@@ -342,7 +342,7 @@ The patterns are: `.up` `.down` `.upDown` `.downUp` `.asPlayed` `.converge` `.di
 
 ### Arpeggiator
 
-An `Arpeggiator` is an `Arpeggio` that follows the notes as they change: whatever is held right now, played one note a step, against the beat. `playing` is the figure's notes at this moment, which is what is held, or the last chord while it is latched, and empty when it is silent.
+An `Arpeggiator` is an `Arpeggio` that follows the notes as they change: whatever is held right now, played one note a step, against the beat. `playing` is the figure's notes at this moment: what is held, or, while it latches, the whole chord since every key was last up. It is empty when the figure is silent.
 
 ```swift
 var arp = Arpeggiator(.upDown, octaves: 2, rate: .sixteenth)
@@ -360,7 +360,7 @@ Three rules decide what happens when the notes change:
 
 - **A new chord after silence starts from its first note.**
 - **A note added or taken away while the others are held keeps the figure's place.** The note joins the ladder where it belongs on the next pass, and nothing restarts.
-- **`latches` keeps the last chord playing after every key goes up**, until a new key starts a new chord. Off, silence follows the last release. Either way the count goes on underneath, so the next note lands on the grid.
+- **`latches` keeps the last chord playing after every key goes up**, until a new key starts a new chord. The chord it keeps is every key that went down since all of them were last up: fingers never leave a chord in the same instant, so a key coming up does not leave it, and a key going down while another is still held joins it. Switched on while keys are down, it takes those keys. Off, silence follows the last release. Either way the count goes on underneath, so the next note lands on the grid.
 
 `events(upTo:)` hands back [`ScheduledNote`](#schedulednote)s the same way the sequencer does. It wants the same look-ahead: the notes up to the end of the frame, played from now.
 

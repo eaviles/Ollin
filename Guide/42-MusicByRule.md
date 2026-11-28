@@ -506,7 +506,7 @@ override func draw() {
 }
 ```
 
-An `Arpeggio` from the chords step is a pattern worked out once from fixed notes. The arpeggiator follows the notes as they change. The bottom block of the figure shows two patterns. The first is `.up` over C4, E4, and G4. A B4 held from step 5 joins the ladder where it belongs, and the pattern carries on. The second is `.upDown` over two octaves. A new chord after silence starts from its first note. Turn `latches` on, and letting go of every key keeps the last chord playing, like the hold switch on a synthesizer. With nothing held, nothing plays, but the count goes on underneath, so the next note lands on the grid.
+An `Arpeggio` from the chords step is a pattern worked out once from fixed notes. The arpeggiator follows the notes as they change. The bottom block of the figure shows two patterns. The first is `.up` over C4, E4, and G4. A B4 held from step 5 joins the ladder where it belongs, and the pattern carries on. The second is `.upDown` over two octaves. A new chord after silence starts from its first note. Turn `latches` on, and letting go keeps the whole chord playing, like the hold switch on a synthesizer. The keys can come up one at a time, as fingers do, and the chord stays whole. With nothing held, nothing plays, but the count goes on underneath, so the next note lands on the grid.
 
 ## More ways to place the notes: tunings
 

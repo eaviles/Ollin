@@ -22,7 +22,7 @@ import os
 ///
 /// Everything a feed does, this does: the request runs on a background queue,
 /// the answer is parsed there, nothing throws, a failure keeps the last good
-/// reading and says why in `problem`, and a headless export reads once and
+/// reading and says why in `lastError`, and a headless export reads once and
 /// holds that reading for every frame. Until the first answer every reading is
 /// `nil`, and `reading` holds the whole answer at once for a sketch that wants
 /// to keep or compare it.
@@ -86,7 +86,7 @@ public final class Weather: @unchecked Sendable {
     ///
     /// The name is looked up once, when the weather starts, and the reading
     /// then carries the place it was taken for and the name the lookup knows
-    /// it by. A name nothing matches leaves the weather empty, and `problem`
+    /// it by. A name nothing matches leaves the weather empty, and `lastError`
     /// says so.
     public convenience init(in name: String, every interval: Double = 900) {
         self.init(place: nil, name: name, interval: interval)
@@ -237,11 +237,11 @@ public final class Weather: @unchecked Sendable {
 
     /// Why the last request failed, in a sentence a sketch can draw, or why the
     /// name could not be found. `nil` once an answer arrives.
-    public var problem: String? {
+    public var lastError: String? {
         let (lookup, geocoder, forecast) = state.withLock { ($0.lookupProblem, $0.geocoder, $0.forecast) }
         if let lookup { return lookup }
-        if let forecast { return forecast.problem }
-        return geocoder?.problem
+        if let forecast { return forecast.lastError }
+        return geocoder?.lastError
     }
 
     // MARK: Asking

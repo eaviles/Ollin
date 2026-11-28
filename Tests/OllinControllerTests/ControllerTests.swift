@@ -42,6 +42,33 @@ import Ollin
         #expect(!GCController.controllers().contains(pad))
     }
 
+    // MARK: - A controller with no full profile
+
+    /// A remote or a small pad has no sticks and triggers to read, so it is
+    /// not a player: it takes no seat, and nothing reports it as having
+    /// connected. Given a seat, it pushed the real pad to player 2 and left
+    /// player 1 saying it had just connected while reading as not connected.
+    @Test func aControllerWithNoFullProfileTakesNoSeat() {
+        let remote = GCController.withMicroGamepad()
+        #expect(remote.extendedGamepad == nil, "the stand-in has to lack the full profile")
+        let pad = GCController.withExtendedGamepad()
+        let hub = staged([remote, pad])
+
+        let first = hub.controller(player: 1, frame: 1)
+        #expect(first.isConnected, "player 1 is the pad that can be read")
+        #expect(first.didConnect)
+        #expect(hub.controllerCountForTest(frame: 1) == 1)
+        let second = hub.controller(player: 2, frame: 1)
+        #expect(!second.isConnected && !second.didConnect)
+
+        // Alone, it is nobody.
+        let alone = staged([remote])
+        let nobody = alone.controller(player: 1, frame: 1)
+        #expect(!nobody.isConnected)
+        #expect(!nobody.didConnect, "a controller that reads as not connected said it had just connected")
+        #expect(alone.controllerCountForTest(frame: 1) == 0)
+    }
+
     // MARK: - Nothing attached
 
     @Test func nothingAttachedReadsCenteredAndUnpressed() {

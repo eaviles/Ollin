@@ -51,6 +51,10 @@ struct CameraFraming: Equatable {
 /// both halves write the same pose, framing a shot by hand and then handing off
 /// to a cinematic move continues from where the hands left it.
 final class CameraRig {
+    /// The frame the rig last moved on, so a frame that asks for its camera
+    /// more than once moves it once (`Sketch.takesRigStep`).
+    var steppedFrame: Int?
+
     // The canonical pose `Camera3D.orbiting` consumes.
     var target: Vector3 = .zero
     var radius: Double = 10

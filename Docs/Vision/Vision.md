@@ -1311,3 +1311,5 @@ if let reason = bodies.unavailableReason {
 ### Permission
 
 Using the camera needs the user's permission, and `start()` requests it the first time it runs. Until the user grants it, `frame` stays `nil` and the trackers report nothing. A feed from `Camera.orStill` shows its picture during that wait ([When there is no camera](#nocamera)). From `swift run`, the system prompts on first use. A packaged app should include a camera-usage description (`NSCameraUsageDescription`).
+
+While the prompt is up, a second `start()` asks nothing more, and `stop()` calls the start off: the answer, when it comes, turns no camera on.

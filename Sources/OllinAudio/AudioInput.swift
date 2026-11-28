@@ -25,7 +25,12 @@ public final class AudioInput: AudioSource {
     private let tapBufferSize: UInt32
 
     /// Whether capture is currently running.
-    public private(set) var isRunning = false
+    public var isRunning: Bool { phase == .running }
+
+    /// Where a start stands. `asking` is a start waiting on the system's
+    /// prompt: the answer belongs to it, and only while it still stands.
+    private enum Phase { case stopped, asking, running }
+    private var phase = Phase.stopped
 
     /// Creates an input bound to the default capture device.
     ///
@@ -33,12 +38,47 @@ public final class AudioInput: AudioSource {
     ///   - fftSize: FFT window length (see `AudioAnalyzer`).
     ///   - smoothing: response damping, `0...1`.
     public init(fftSize: Int = 1024, smoothing: Float = 0.8) {
-        // Don't read the input node's format here — touching the capture device
+        // Don't read the input node's format here: touching the capture device
         // before permission is granted can trip the system. Modern Macs run the
         // input at 48 kHz; the band-query Hz mapping uses this, while the tap
         // itself binds to the device's real format whatever it is.
-        self.analyzer = AudioAnalyzer(fftSize: fftSize, sampleRate: 48000, smoothing: smoothing)
-        self.tapBufferSize = UInt32(max(256, fftSize))
+        let analyzer = AudioAnalyzer(fftSize: fftSize, sampleRate: 48000, smoothing: smoothing)
+        let bufferSize = UInt32(max(256, fftSize))
+        self.analyzer = analyzer
+        self.tapBufferSize = bufferSize
+        let engine = self.engine, relay = self.relay
+        self.device = Device(
+            installTap: {
+                installAnalyzerTap(on: engine.inputNode, bufferSize: bufferSize,
+                                   analyzer: analyzer, relay: relay)
+            },
+            removeTap: { engine.inputNode.removeTap(onBus: 0) },
+            start: {
+                engine.prepare()
+                try engine.start()
+            },
+            stop: { engine.stop() })
+    }
+
+    /// The capture engine's four calls, behind closures the tests replace: a
+    /// test must not open the microphone, and the order these are called in
+    /// is what the lifecycle around them has to get right.
+    struct Device {
+        var installTap: () -> Void
+        var removeTap: () -> Void
+        var start: () throws -> Void
+        var stop: () -> Void
+    }
+    var device: Device
+
+    /// Where the permission stands, and the call that puts the system's prompt
+    /// up. The tests replace both: a test must never put a real prompt on
+    /// somebody's screen, or wait on the answer to one.
+    package static var authorizationStatus: () -> AVAuthorizationStatus = {
+        AVCaptureDevice.authorizationStatus(for: .audio)
+    }
+    package static var requestAccess: (@escaping @Sendable (Bool) -> Void) -> Void = { answer in
+        AVCaptureDevice.requestAccess(for: .audio, completionHandler: answer)
     }
 
     /// Begins capturing and analyzing input. Gates on microphone permission: if
@@ -51,14 +91,22 @@ public final class AudioInput: AudioSource {
     /// no caller left to throw to. Touching the input device before permission
     /// is granted is what trips the system, so it's deferred to here.
     public func start() throws {
-        guard !isRunning else { return }
+        // A start that is already waiting on the prompt is the start: asking
+        // again would bring a second answer, and a second tap with it.
+        guard phase == .stopped else { return }
         unavailableReason = nil
-        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        switch AudioInput.authorizationStatus() {
         case .authorized:
             try startEngine()
         case .notDetermined:
-            AVCaptureDevice.requestAccess(for: .audio) { granted in
+            phase = .asking
+            AudioInput.requestAccess { granted in
                 Task { @MainActor in
+                    // The answer belongs to the start that is waiting on it.
+                    // A `stop()` since then called that start off, and a
+                    // second answer to one prompt finds the capture running.
+                    guard self.phase == .asking else { return }
+                    self.phase = .stopped
                     guard granted else {
                         self.unavailableReason = "microphone access was refused"
                         return
@@ -79,20 +127,34 @@ public final class AudioInput: AudioSource {
     /// no caller left to throw to.
     public private(set) var unavailableReason: String?
 
-    /// Stops capturing. Safe to call when not running.
+    /// Stops capturing. Safe to call when not running. Called while the
+    /// system's prompt is still up, it calls the start off: the answer, when
+    /// it comes, opens nothing.
     public func stop() {
-        guard isRunning else { return }
-        engine.inputNode.removeTap(onBus: 0)
-        engine.stop()
-        isRunning = false
+        switch phase {
+        case .stopped:
+            return
+        case .asking:
+            phase = .stopped
+        case .running:
+            device.removeTap()
+            device.stop()
+            phase = .stopped
+        }
     }
 
     private func startEngine() throws {
-        installAnalyzerTap(on: engine.inputNode, bufferSize: tapBufferSize,
-                           analyzer: analyzer, relay: relay)
-        engine.prepare()
-        try engine.start()
-        isRunning = true
+        device.installTap()
+        do {
+            try device.start()
+        } catch {
+            // The tap is the only one the node allows. Left in place, the
+            // next start would install a second, which the engine answers
+            // with an exception.
+            device.removeTap()
+            throw error
+        }
+        phase = .running
     }
 
     private let relay = AudioTapRelay()

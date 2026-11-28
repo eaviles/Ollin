@@ -24,6 +24,10 @@ package final class FileWatcher {
     }
 
     package func start() {
+        // Already watching. A second stream would take the first one's place
+        // in `stream` and leave it running where `stop()` cannot reach it,
+        // still calling into this watcher after it is gone.
+        guard stream == nil else { return }
         var context = FSEventStreamContext(
             version: 0,
             info: Unmanaged.passUnretained(self).toOpaque(),

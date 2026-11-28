@@ -25,7 +25,7 @@ import os
 /// a web socket, and anything else is read as a stream of server-sent events,
 /// the plain-HTTP way a server pushes. The surface is the same either way:
 /// the latest message as `json` / `text` / `bytes`, everything since the last
-/// frame from `messages()`, a count in `updates`, and `problem` saying why
+/// frame from `messages()`, a count in `updates`, and `lastError` saying why
 /// when the connection is down.
 ///
 /// Reconnection is the point, because a piece on a wall outlives any socket.
@@ -115,7 +115,7 @@ public final class PushFeed: @unchecked Sendable {
     /// Holds `address` open and reads what arrives.
     ///
     /// An address that isn't one leaves the feed empty and says so in
-    /// `problem`, the same as a server that never answers: a feed with
+    /// `lastError`, the same as a server that never answers: a feed with
     /// nothing to draw is one state, not two.
     ///
     /// `headers:` are sent with every connection, which is where an API key
@@ -310,7 +310,7 @@ public final class PushFeed: @unchecked Sendable {
     public var isRunning: Bool { state.withLock { $0.running } }
 
     /// Whether the connection is open right now. While it is down, the feed
-    /// is redialing on its own; `problem` says what happened.
+    /// is redialing on its own; `lastError` says what happened.
     public var isConnected: Bool { state.withLock { $0.connected } }
 
     /// Connections that have failed or dropped in a row. Back to zero once
@@ -319,7 +319,7 @@ public final class PushFeed: @unchecked Sendable {
 
     /// Why the connection is down, in a sentence a sketch can draw. `nil`
     /// while it is up.
-    public var problem: String? { state.withLock { $0.problem } }
+    public var lastError: String? { state.withLock { $0.problem } }
 
     // MARK: Connecting
 

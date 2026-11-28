@@ -54,7 +54,7 @@ final class Quakes: Sketch {
         if feed.updateCount != built { rebuild() }
 
         guard !quakes.isEmpty else {
-            if let problem = feed.problem { return drawStatus(problem, style: .warning) }
+            if let problem = feed.lastError { return drawStatus(problem, style: .warning) }
             return drawStatus("Waiting for the last day of earthquakes…")
         }
 
@@ -141,7 +141,7 @@ final class Quakes: Sketch {
     }
 
     private func status() -> String {
-        if let problem = feed.problem { return "the feed is unhappy: \(problem)" }
+        if let problem = feed.lastError { return "the feed is unhappy: \(problem)" }
         guard let since = feed.timeSinceUpdate else { return "waiting" }
         return "read \(Int(since))s ago, checking every \(Int(feed.interval))s"
     }

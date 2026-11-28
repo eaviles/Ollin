@@ -4,7 +4,7 @@
 // row of requests along a time axis, each labeled with what the server said,
 // and under it the two numbers a sketch actually draws from: the count of
 // answers that differed, which does not move for a request that brought back
-// the same bytes, and the problem, which lights while the requests are failing
+// the same bytes, and the last error, which lights while the requests are failing
 // and never takes the last good answer away.
 import Ollin
 import OllinDiagram
@@ -168,7 +168,7 @@ final class NumbersThatKeepArriving: Sketch {
     }
 
     func drawProblem(labelAt labelY: Double, base: Double) {
-        label("problem", at: labelY, note: "why the last request failed, and nil once one arrives")
+        label("lastError", at: labelY, note: "why the last request failed, and nil once one arrives")
 
         stroke(faint)
         strokeWeight(1)

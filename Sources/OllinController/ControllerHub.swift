@@ -112,7 +112,12 @@ final class ControllerHub {
     }
 
     private func sample() {
-        let attached = source()
+        // A controller with no full profile (a remote, a small pad) has no
+        // sticks or triggers to read, so it is not a player: it takes no
+        // seat. Seated, it would push the pad that can be read to the next
+        // player number, and report itself as just connected while reading
+        // as not connected.
+        let attached = source().filter { $0.extendedGamepad != nil }
         events.removeAll(keepingCapacity: true)
 
         // Anything that left. Walk slots in order so the answer never depends

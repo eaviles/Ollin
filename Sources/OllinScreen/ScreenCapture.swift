@@ -191,7 +191,7 @@ public final class ScreenCapture: FrameSource, VideoFeed {
     // `deinit` can end the capture, which it cannot do by reading a non-Sendable
     // property of a main-actor class.
     private let held = StreamHolder()
-    private var streamIsLive = false
+    private(set) var streamIsLive = false
 
     // Resolving a source is asynchronous and may find nothing yet, so it runs as
     // a task that retries until the window appears or the sketch stops.
@@ -226,7 +226,7 @@ public final class ScreenCapture: FrameSource, VideoFeed {
     public func start() {
         guard !isRunning else { return }
         isRunning = true
-        guard Self.isAvailable else {
+        guard hasAccess() else {
             // Asking is what shows the prompt; the answer cannot arrive in this
             // process, so say what happens next rather than waiting for it.
             _ = Self.requestAccess()
@@ -269,27 +269,68 @@ public final class ScreenCapture: FrameSource, VideoFeed {
     /// One attempt at resolving the source and standing a stream up on it.
     /// Returns whether the stream started.
     private func attemptBind() async -> Bool {
-        let excluded = excludesOwnWindows ? ProcessInfo.processInfo.processIdentifier : nil
         let wanted = source
         do {
-            let content = try await SCShareableContent.excludingDesktopWindows(
-                false, onScreenWindowsOnly: true)
-            guard !Task.isCancelled else { return true }
-            guard let filter = resolveFilter(wanted, in: content, excludingPID: excluded) else {
+            let started = try await (startAttempt ?? liveStart)(wanted)
+            // The start crossed a suspension. Since it began, `stop()` may
+            // have run, or the source changed and a newer attempt owns the
+            // capture; either cancels this one. The stream that came up is
+            // then nobody's, and left running it would have the system go on
+            // recording the screen for a capture that reads as off.
+            guard isRunning, !Task.isCancelled else {
+                started?.stop()
+                return true
+            }
+            guard let started else {
                 unavailableReason = "Waiting for \(wanted.label)…"
                 return false
             }
-            try await startStream(on: filter)
+            adopt(started)
+            return true
+        } catch is CancellationError {
             return true
         } catch {
+            // What a called-off attempt ran into is not the capture's news.
+            guard isRunning, !Task.isCancelled else { return true }
             unavailableReason = Self.reason(for: error)
             return false
         }
     }
 
-    private func startStream(on filter: SCContentFilter) async throws {
-        teardownStream()
+    /// A stream that has started, as the lifecycle around it holds one.
+    struct StartedStream {
+        var stream: SCStream?
+        var output: AnyObject?
+        var filter: SCContentFilter?
+        /// What a test's stand-in does when it is stopped.
+        var onStop: (() -> Void)?
 
+        /// End a stream that started and that nobody wants any more.
+        func stop() {
+            stream?.stopCapture(completionHandler: { _ in })
+            onStop?()
+        }
+    }
+
+    /// The start the tests replace, and the permission they answer for
+    /// themselves: a test cannot grant itself screen recording, and what it
+    /// holds is the lifecycle around a start that takes its time. `nil` is
+    /// the real start.
+    var startAttempt: (@MainActor (ScreenSource) async throws -> StartedStream?)?
+    var hasAccess: () -> Bool = { ScreenCapture.isAvailable }
+
+    /// Find `wanted` among what is on screen and start a stream on it, or
+    /// `nil` when it is not there to capture yet.
+    private func liveStart(_ wanted: ScreenSource) async throws -> StartedStream? {
+        let excluded = excludesOwnWindows ? ProcessInfo.processInfo.processIdentifier : nil
+        let content = try await SCShareableContent.excludingDesktopWindows(
+            false, onScreenWindowsOnly: true)
+        try Task.checkCancellation()
+        guard let filter = resolveFilter(wanted, in: content, excludingPID: excluded) else { return nil }
+        return try await startStream(on: filter)
+    }
+
+    private func startStream(on filter: SCContentFilter) async throws -> StartedStream {
         let config = SCStreamConfiguration()
         apply(config, for: filter)
 
@@ -301,12 +342,18 @@ public final class ScreenCapture: FrameSource, VideoFeed {
         let stream = SCStream(filter: filter, configuration: config, delegate: output)
         try stream.addStreamOutput(output, type: .screen, sampleHandlerQueue: queue)
         try await stream.startCapture()
+        return StartedStream(stream: stream, output: output, filter: filter)
+    }
 
-        held.stream = stream
-        held.output = output
-        self.currentFilter = filter
-        self.streamIsLive = true
-        self.unavailableReason = nil
+    /// Take a started stream as the capture's own, in place of any before it.
+    private func adopt(_ started: StartedStream) {
+        teardownStream()
+        held.stream = started.stream
+        held.output = started.output
+        held.onStop = started.onStop
+        currentFilter = started.filter
+        streamIsLive = true
+        unavailableReason = nil
     }
 
     /// Fill in a stream configuration for `filter`. The captured size is the
@@ -469,11 +516,15 @@ public final class ScreenCapture: FrameSource, VideoFeed {
 private final class StreamHolder: @unchecked Sendable {
     var stream: SCStream?
     var output: AnyObject?
+    /// What a test's stand-in stream does when it is stopped.
+    var onStop: (() -> Void)?
 
     func stop() {
         stream?.stopCapture(completionHandler: { _ in })
+        onStop?()
         stream = nil
         output = nil
+        onStop = nil
     }
 }
 

@@ -389,11 +389,21 @@ final class SpeechEngine: AudioListening, @unchecked Sendable {
         return (transcriber, format)
     }
 
+    /// The preparation `start()` waits on, which a test replaces with one it
+    /// holds open: the real one reaches the system's speech models.
+    var prepare: @Sendable (Locale) async throws -> (transcriber: SpeechTranscriber, format: AVAudioFormat)?
+        = { try await SpeechEngine.prepareTranscriber(for: $0) }
+
     func start() {
+        let prepare = self.prepare
         let task = Task { [weak self] in
             guard let self else { return }
             do {
-                guard let prepared = try await SpeechEngine.prepareTranscriber(for: requestedLocale)
+                let prepared = try await prepare(requestedLocale)
+                // Stopped while it was getting ready: what the preparation
+                // came back with is no longer anybody's news.
+                guard !Task.isCancelled else { return }
+                guard let prepared
                 else {
                     status.markUnavailable(
                         "speech recognition has no model for "
@@ -418,21 +428,25 @@ final class SpeechEngine: AudioListening, @unchecked Sendable {
                 status.recordSuccess()
                 await collect(from: prepared.transcriber)
             } catch {
+                guard !Task.isCancelled else { return }
                 status.markUnavailable(
                     "speech recognition could not start: \(error.localizedDescription)")
             }
         }
         tasks.append(task)
         // Say what is happening while a language model installs, rather than
-        // reading as broken for the minute it takes.
-        Task { [weak self] in
+        // reading as broken for the minute it takes. Kept with the tasks
+        // `stop()` cancels: left out, it would write its notice onto a
+        // listener that has already been stopped.
+        let notice = Task { [weak self] in
             guard let self else { return }
             try? await Task.sleep(for: .milliseconds(400))
-            guard !(lock.withLock { $0.running }), status.isAvailable else { return }
+            guard !Task.isCancelled, !(lock.withLock { $0.running }), status.isAvailable else { return }
             status.markUnavailable(
                 "installing the speech model for \(requestedLocale.identifier); "
                 + "listening starts when it lands.")
         }
+        tasks.append(notice)
     }
 
     private func collect(from transcriber: SpeechTranscriber) async {

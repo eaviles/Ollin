@@ -18,6 +18,13 @@ import Ollin
     let colorW = 16, colorH = 12
     let depthW = 8, depthH = 6
 
+    // MARK: A device nobody started
+
+    /// A device nobody started is not connecting, and says what to do.
+    @MainActor @Test func aDeviceNobodyStartedSaysSo() {
+        #expect(Record3DDevice().waitingMessage == "Call start() to read the phone.")
+    }
+
     // MARK: Opening + metadata
 
     @Test func opensAndParsesMetadata() throws {

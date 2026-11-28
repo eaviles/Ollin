@@ -54,14 +54,18 @@ public final class MIDIOutput: @unchecked Sendable {
 
     /// Opens an output to a hardware destination: the first one whose name
     /// contains `match` (case-insensitive), or the first available when `match` is
-    /// `nil`. Throws if Core MIDI can't be opened.
+    /// `nil`. Throws if Core MIDI can't be opened, and throws
+    /// `MIDIError.noDestination` when no destination has that name or none
+    /// is attached at all: nothing is opened then, so `isOpen` stays false
+    /// and a later `open` (once the device is plugged in) starts fresh.
     public func open(matching match: String? = nil) throws {
         guard !isOpen else { return }
+        let destination = MIDIOutput.pickDestination(matching: match)
+        guard destination != 0 else { throw MIDIError.noDestination(matching: match) }
         let client = try createClient()
         var port = MIDIPortRef()
         let status = MIDIOutputPortCreate(client, "\(clientName) Out" as CFString, &port)
         guard status == noErr else { MIDIClientDispose(client); throw MIDIError.coreMIDI(status) }
-        let destination = MIDIOutput.pickDestination(matching: match)
         let openedClient = client, openedPort = port   // lets: a lock body can't capture a var
         core.withLock { core in
             core.client = openedClient
@@ -203,16 +207,23 @@ public final class MIDIOutput: @unchecked Sendable {
 
     private static func pickDestination(matching match: String?) -> MIDIEndpointRef {
         let count = MIDIGetNumberOfDestinations()
-        guard count > 0 else { return 0 }
-        if let match {
-            for index in 0..<count {
-                let destination = MIDIGetDestination(index)
-                let name = MIDIEndpoint.stringProperty(destination, kMIDIPropertyDisplayName)
-                    ?? MIDIEndpoint.stringProperty(destination, kMIDIPropertyName) ?? ""
-                if name.localizedCaseInsensitiveContains(match) { return destination }
-            }
+        let names = (0..<count).map { index -> String in
+            let destination = MIDIGetDestination(index)
+            return MIDIEndpoint.stringProperty(destination, kMIDIPropertyDisplayName)
+                ?? MIDIEndpoint.stringProperty(destination, kMIDIPropertyName) ?? ""
         }
-        return MIDIGetDestination(0)
+        guard let index = pick(from: names, matching: match) else { return 0 }
+        return MIDIGetDestination(index)
+    }
+
+    /// Which of the destinations, by name, an output opens on: the first
+    /// whose name contains `match`, or the first of all when nothing is asked
+    /// for. A name nothing matches picks none: falling back to the first
+    /// destination would send a sketch's notes to an unrelated device.
+    static func pick(from names: [String], matching match: String?) -> Int? {
+        guard !names.isEmpty else { return nil }
+        guard let match else { return 0 }
+        return names.firstIndex { $0.localizedCaseInsensitiveContains(match) }
     }
 
     /// Packs the message into a one-word MIDI 1.0 event list and emits it, either

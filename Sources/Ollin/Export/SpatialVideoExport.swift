@@ -345,8 +345,8 @@ extension OllinApp {
         }
         renderer.automaticQuality = quality
         renderer.renderScale = OllinApp.exportRenderScale
-        isRenderingHeadless = true
-        defer { isRenderingHeadless = false }
+        let modeFound = DriveMode.enter()
+        defer { modeFound.restore() }
 
         let size = sketch.canvasSizeForRun()
         let width = size.width, height = size.height

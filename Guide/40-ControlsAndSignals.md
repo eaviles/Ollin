@@ -200,7 +200,7 @@ final class Sky: Sketch {
 
 Give it a place, as a latitude and longitude, or give it a name. A name is looked up once when the weather starts, and the reading then carries the place it turned out to be. The reads come in plain units: degrees, meters per second, millimeters in the last hour, and fractions of one for humidity and cloud cover. `condition` is the sky in a word (`.clear`, `.rain`, `.fog`, and so on), and `isDay` says whether the sun is up there.
 
-Every read is `nil` until the first answer arrives, and it stays `nil` if the network is down from the start. So one fallback with `??` covers both. `sky.isDay == true` compares an optional with `true`, which is false while there is no answer yet. When something goes wrong, `problem` holds a sentence that says what, and the weather keeps any reading it already had. So keep drawing the last reading and put the notice over it. `updateCount` goes up by one for each new reading, so comparing it with a count you stored tells you when the sky changed.
+Every read is `nil` until the first answer arrives, and it stays `nil` if the network is down from the start. So one fallback with `??` covers both. `sky.isDay == true` compares an optional with `true`, which is false while there is no answer yet. When something goes wrong, `lastError` holds a sentence that says what, and the weather keeps any reading it already had. So keep drawing the last reading and put the notice over it. `updateCount` goes up by one for each new reading, so comparing it with a count you stored tells you when the sky changed.
 
 An export reads the weather once and holds that answer for every frame. An export that fetched per frame would render something different each time you ran it.
 
@@ -327,7 +327,7 @@ final class WeatherRose: Sketch {
         drawShape(Shape(rose(at: middle, radius: radius * throb, turn: turn)))
 
         // A feed that cannot reach its server says so, and keeps its last reading.
-        if let problem = sky.problem {
+        if let problem = sky.lastError {
             noStroke()
             fill(ink)
             textSize(22)
@@ -351,7 +351,7 @@ It composes the steps in this order:
 - **The parameters** come from [One parameter, three hands](#one-parameter-three-hands-binding-and-smoothing). Two of them matter most while you play, so `setup()` binds each one twice. The size goes to knob 7 and to the address `/radius`, and how far the petals open goes to knob 8 and to `/bloom`. With the inspector, that makes three hands on each. The drawing code reads plain `radius` and `bloom` and never knows which hand moved them. The size has `.smoothed` on it, and the bloom has a fixed glide of 0.3 seconds. The show-rule hides `trailCount` while `trails` is off, since then it has nothing to count.
 - **The beat** comes from [One beat for the whole room](#one-beat-for-the-whole-room-link). The rose throbs on `link.beat` and turns with `link.progress(over: 16)`, which ramps once every four bars. Dividing that turn by the petal count moves the rose by one petal's width. So when the ramp starts again, the rose is back in the same pose, and the turn never jumps. The bar count changes once a bar, and that change is when the knock from [Touch as an output](#touch-as-an-output-haptics) plays. Comparing it with `lastBar` plays the knock at the moment the bar turns, rather than on every frame. `setup()` stores the bar the clock starts in, so the first knock waits for the next bar.
 - **The stick** comes from [Something to hold](#something-to-hold-game-controllers). With no controller connected, `controller.leftStick` reads centered, so the rose sits in the middle of the canvas.
-- **The wind** comes from [The weather outside](#the-weather-outside-weather). Every read is `nil` until the first answer arrives, so each one has a fallback. Together the fallbacks are a calm afternoon with a light west wind. The weather gives `windDirection` as the compass bearing the wind blows from, in degrees clockwise from north. So `downwind` points the other way, in canvas terms, with y growing down the page. Each trail is drawn one step further downwind than the last, and a stronger wind makes the steps longer. When the feed cannot reach its server, the sketch writes `problem` along the bottom and keeps drawing the last reading.
+- **The wind** comes from [The weather outside](#the-weather-outside-weather). Every read is `nil` until the first answer arrives, so each one has a fallback. Together the fallbacks are a calm afternoon with a light west wind. The weather gives `windDirection` as the compass bearing the wind blows from, in degrees clockwise from north. So `downwind` points the other way, in canvas terms, with y growing down the page. Each trail is drawn one step further downwind than the last, and a stronger wind makes the steps longer. When the feed cannot reach its server, the sketch writes `lastError` along the bottom and keeps drawing the last reading.
 - **Day and night.** `isDay` picks dark ink on cream paper by day, and pale ink on night blue after dark. Day is the fallback.
 - **The trails.** `stride(from: trailCount, through: 1, by: -1)` counts down, so the farthest trail is drawn first and the nearer ones land on top. Each is fainter by `0.5 / Double(k)` and turned a little behind the rose by `turn - Double(k) * 0.05`, so the trails lag as it turns.
 - **The rose** itself is `rose(at:radius:turn:)`. It walks 360 points around a circle and pulls each one in by how far it sits from a petal's tip. `cos(Double(petals) * (angle - turn))` is 1 at a tip and -1 between two tips, so `bloom` sets how deep the gaps cut. The rose is filled with `drawShape(Shape(...))`, a [`Shape`](06-GridsAndRepetition.md#drawing-inside-a-shape-withclip) drawn the way [Chapter 7](07-Tiles.md#pieces-that-have-to-fit-polyominoes) draws one. `drawPolygon` fills only an outline with no dents, and a rose has a dent between every two petals. The trails have no fill, so `drawPolygon` draws their outlines.
@@ -642,7 +642,7 @@ Reading once is right for a file, and wrong for a number that changes while your
   <img src="Images/40-ControlsAndSignals/NumbersThatKeepArriving.jpg" alt="A diagram on white. A row of request marks along a time line, labeled 200, 304, 304, then three red crosses labeled 500, with widening waits marked wait, twice, and four times before the next 200, then a 304. Below, a teal staircase labeled updates steps from 1 to 2 only at the second 200, and under that a pale pink band labeled problem covers the failing stretch" width="680">
 </picture>
 
-The numbers along the top are the status codes a web server answers with. 200 carries an answer, 304 means nothing changed, and 500 is a server error. `updateCount` steps up only when the answer differs from the one before, and `problem` covers the stretch that failed.
+The numbers along the top are the status codes a web server answers with. 200 carries an answer, 304 means nothing changed, and 500 is a server error. `updateCount` steps up only when the answer differs from the one before, and `lastError` covers the stretch that failed.
 
 ```swift
 final class Tide: Sketch {
@@ -660,7 +660,7 @@ final class Tide: Sketch {
 }
 ```
 
-`every:` is in seconds. What comes back is the same `JSON` and `Table` that [Chapter 9](09-Pictures.md#numbers-you-didnt-type-csv-and-json) read out of files. So the drawing code doesn't change when the numbers start arriving from the world instead of the disk. Before the first answer arrives, `json` reads as null, JSON's word for no value, and `table` and `text` are `nil`. They read the same if the network is down from the start. When something goes wrong, `problem` says what, and the feed keeps any answer it already had, the way the weather does.
+`every:` is in seconds. What comes back is the same `JSON` and `Table` that [Chapter 9](09-Pictures.md#numbers-you-didnt-type-csv-and-json) read out of files. So the drawing code doesn't change when the numbers start arriving from the world instead of the disk. Before the first answer arrives, `json` reads as null, JSON's word for no value, and `table` and `text` are `nil`. They read the same if the network is down from the start. When something goes wrong, `lastError` says what, and the feed keeps any answer it already had, the way the weather does.
 
 `updateCount` counts only the answers that differ from the one before. So a poll that brought back the same bytes doesn't move it. This fragment keeps the last count it saw, and the time the answer changed, to start a fade from:
 
@@ -713,7 +713,7 @@ final class Edits: Sketch {
 
 The read to notice is `messages()`. On a busy stream, dozens of messages land between two frames, and the `json` and `text` reads show only the last of them. `messages()` hands over every message since the last frame, oldest first, so nothing slips between two frames. `updateCount` counts every message here, since each one was sent because there was something new to say.
 
-The feed also stays connected by itself, as the figure shows. A dropped connection redials on its own, waiting a little longer after each failure. A stream of server-sent events that labels its messages with ids is resumed from the last one seen. So a message sent while the connection was down arrives late instead of being lost. On a web socket, a `greeting:` is a message you give the feed when you make it, to send as soon as it connects. It is sent at every open, not once. That keeps a service that wants a subscribe message subscribed across every redial. Your sketch reads `isConnected` and `problem` to say what is happening, and keeps drawing everything that already arrived.
+The feed also stays connected by itself, as the figure shows. A dropped connection redials on its own, waiting a little longer after each failure. A stream of server-sent events that labels its messages with ids is resumed from the last one seen. So a message sent while the connection was down arrives late instead of being lost. On a web socket, a `greeting:` is a message you give the feed when you make it, to send as soon as it connects. It is sent at every open, not once. That keeps a service that wants a subscribe message subscribed across every redial. Your sketch reads `isConnected` and `lastError` to say what is happening, and keeps drawing everything that already arrived.
 
 In an export, the feed waits for one message while `start()` runs, then holds it for every frame, the way the polled feed reads once. The `Data/Edits` example is this entry as a finished sketch. The encyclopedia's edits fall as rain, each drop sized by the bytes somebody just added or took away.
 

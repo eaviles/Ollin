@@ -149,8 +149,8 @@ extension OllinApp {
             // one across its tiles: the shader library is compiled once rather
             // than once per picture, which on this surface is most of the cost.
             var renderer: MetalRenderer?
-            isRenderingHeadless = true
-            defer { isRenderingHeadless = false }
+            let modeFound = DriveMode.enter()
+            defer { modeFound.restore() }
 
             var frames: [WidgetFrame] = []
             for moment in timeline.moments(from: start) {

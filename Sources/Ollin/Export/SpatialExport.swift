@@ -208,8 +208,8 @@ extension OllinApp {
     /// calls as a `Scene`. Never touches Metal, so it runs anywhere and is
     /// deterministic.
     static func recordSpatialFrame(of sketch: Sketch, frame: Int, fps: Double) throws -> Scene {
-        isRenderingHeadless = true
-        defer { isRenderingHeadless = false }
+        let modeFound = DriveMode.enter()
+        defer { modeFound.restore() }
         let size = sketch.canvasSizeForRun()
         sketch.setCanvasSize(width: Double(size.width), height: Double(size.height))
         try sketch.runSetup()

@@ -120,7 +120,12 @@ public final class Record3DDevice: FrameSource, VideoFeed {
 
     /// The notice to show before frames arrive (`VideoFeed`) — reflects the live
     /// connection state (no device, refused, reconnecting).
-    public var waitingMessage: String { reader.statusMessage ?? "Connecting to the phone…" }
+    public var waitingMessage: String {
+        // A device nobody started is not connecting, and one that was
+        // stopped is not reconnecting: say what to do instead.
+        guard reader.isStarted else { return "Call start() to read the phone." }
+        return reader.statusMessage ?? "Connecting to the phone…"
+    }
 }
 
 /// Owns the usbmuxd connection and the background read loop, decoding frames off
@@ -151,6 +156,8 @@ final class Record3DStreamReader: @unchecked Sendable {
     var latestPose: Record3DPose? { lock.withLock { $0.latest?.pose } }
     var isConnected: Bool { lock.withLock { $0.connected } }
     var statusMessage: String? { lock.withLock { $0.message } }
+    /// Whether `start()` has been called and `stop()` has not.
+    var isStarted: Bool { lock.withLock { $0.running } }
 
     func setTap(_ tap: FrameTap?) { lock.withLock { $0.tap = tap } }
 
@@ -170,6 +177,7 @@ final class Record3DStreamReader: @unchecked Sendable {
             let fd = state.fd
             state.fd = -1
             state.connected = false
+            state.message = nil     // what a stopped reader last ran into is not news
             return fd
         }
         if fd >= 0 { close(fd) }   // breaks a blocking read
@@ -185,7 +193,12 @@ final class Record3DStreamReader: @unchecked Sendable {
             do {
                 fd = try USBMux.connect(toPort: port)
             } catch {
-                lock.withLock { $0.connected = false; $0.message = Self.message(for: error) }
+                // A connection attempt still in flight when `stop()` ran
+                // leaves no sentence behind for the next start to open on.
+                lock.withLock {
+                    $0.connected = false
+                    if $0.running { $0.message = Self.message(for: error) }
+                }
                 Thread.sleep(forTimeInterval: 1.0)
                 continue
             }

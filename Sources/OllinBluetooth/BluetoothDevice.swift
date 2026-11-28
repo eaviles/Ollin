@@ -117,6 +117,8 @@ public final class BluetoothDevice: @unchecked Sendable {
         /// anything connected to compare it against.
         var connectingTo: UUID?
         var deviceName: String?
+        /// Why the link last dropped or failed to come up, until it is up again.
+        var lastError: String?
         var signal: Int?
         var offered: [BluetoothCharacteristicInfo] = []
         var latest: [BluetoothUUID: BluetoothReading] = [:]
@@ -219,6 +221,7 @@ public final class BluetoothDevice: @unchecked Sendable {
             $0.connectedTo = nil
             $0.connectingTo = nil
             $0.offered = []
+            $0.lastError = nil      // let go on purpose: nothing went wrong
             return id
         }
         backend.stopScan()
@@ -232,7 +235,7 @@ public final class BluetoothDevice: @unchecked Sendable {
     public var isConnected: Bool { state.withLock { $0.connectedTo != nil } }
 
     /// The connected device's own name, or `nil` when nothing is connected.
-    public var name: String? { state.withLock { $0.deviceName } }
+    public var name: String? { state.withLock { $0.connectedTo != nil ? $0.deviceName : nil } }
 
     /// How strong the last advertisement was, in dBm. Closer to zero is
     /// closer to the Mac. `nil` until the device has been heard from.
@@ -252,6 +255,14 @@ public final class BluetoothDevice: @unchecked Sendable {
         let read = state.withLock { ($0.radio, $0.began, $0.headless) }
         return bluetoothReason(read.0, began: read.1, grace: radioGrace, headless: read.2)
     }
+
+    /// Why the link to the device last dropped, or failed to come up, in a
+    /// sentence a sketch can draw; `nil` while nothing has gone wrong. It is
+    /// about the device, where `unavailableReason` is about the Mac's radio.
+    /// The device is looked for again on its own, and this is cleared when
+    /// it is connected again, or when the sketch lets it go with
+    /// `disconnect()`.
+    public var lastError: String? { state.withLock { $0.lastError } }
 
     /// What the connected device offers, once it has said. Empty before that.
     /// Values the catalog names come back named and ready to read; anything
@@ -440,15 +451,22 @@ public final class BluetoothDevice: @unchecked Sendable {
                 $0.connectingTo = nil
                 $0.deviceName = name
                 $0.offered = offered
+                $0.lastError = nil
             }
             settle(device, offered: offered, generation: generation)
 
-        case .lost(let device, _):
+        case .lost(let device, let reason):
             let wasOurs = state.withLock { state -> Bool in
                 guard state.connectedTo == device || state.connectingTo == device else { return false }
+                let name = state.deviceName ?? "the device"
+                let wasConnected = state.connectedTo == device
                 state.connectedTo = nil
                 state.connectingTo = nil
                 state.offered = []
+                // The radio's own words when it gave any: a sketch that only
+                // saw `isConnected` go false could not say why.
+                let what = wasConnected ? "the link to \(name) dropped" : "\(name) could not be connected to"
+                state.lastError = reason.map { "\(what): \($0)" } ?? what
                 return true
             }
             guard wasOurs else { return }

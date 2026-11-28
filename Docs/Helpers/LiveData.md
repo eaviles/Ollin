@@ -8,7 +8,7 @@
 
 The request runs on a background queue, so `draw()` never waits for the network. The bytes are read into a `JSON` or a `Table` on that queue too, so no frame pays for the parse.
 
-Nothing throws. Until the first answer arrives, `json` reads as null and `table`, `text`, and `bytes` are `nil`, even when the network is down. A feed with nothing to draw is in one state, not two. A failure after that keeps the last answer. `problem` says why.
+Nothing throws. Until the first answer arrives, `json` reads as null and `table`, `text`, and `bytes` are `nil`, even when the network is down. A feed with nothing to draw is in one state, not two. A failure after that keeps the last answer. `lastError` says why.
 
 ### Contents
 
@@ -54,7 +54,7 @@ final class Tide: Sketch {
 }
 ```
 
-`every:` is in seconds and never goes below one. Text that is not a valid address leaves the feed empty, and `problem` says so, the same as a server that never answers.
+`every:` is in seconds and never goes below one. Text that is not a valid address leaves the feed empty, and `lastError` says so, the same as a server that never answers.
 
 | Call | What it does |
 |---|---|
@@ -99,12 +99,12 @@ if tide.updateCount != seen {
 | `isRunning` | `Bool` | Whether the feed is asking. |
 | `isWaiting` | `Bool` | Whether a request is in flight right now. |
 | `failureCount` | `Int` | How many requests have failed in a row. It goes back to zero on the next answer. |
-| `problem` | `String?` | Why the last request failed, in a sentence a sketch can draw. It is `nil` once an answer arrives. |
+| `lastError` | `String?` | Why the last request failed, in a sentence a sketch can draw. It is `nil` once an answer arrives. |
 
 A failure never clears what the feed already holds. A sketch can keep drawing the last good answer with the notice over it, instead of going blank:
 
 ```swift
-if let problem = tide.problem { drawStatus(problem, style: .warning) }
+if let problem = tide.lastError { drawStatus(problem, style: .warning) }
 ```
 
 <a name="content"></a>
@@ -170,7 +170,7 @@ final class Edits: Sketch {
 }
 ```
 
-The reads you learned on a `DataFeed` still work here. `json`, `text`, and `bytes` hold the latest message, `problem` says why when something is wrong, and nothing throws. `event` adds the label, on a stream that names its events.
+The reads you learned on a `DataFeed` still work here. `json`, `text`, and `bytes` hold the latest message, `lastError` says why when something is wrong, and nothing throws. `event` adds the label, on a stream that names its events.
 
 | Call | What it does |
 |---|---|
@@ -199,7 +199,7 @@ A feed that nobody drains keeps the newest few hundred messages and drops the ol
 
 ### Staying connected
 
-A sketch on a wall outlives any socket, so a `PushFeed` has to reconnect. The feed does all of it on its own, and a sketch only ever reads `isConnected` and `problem` to say what is happening.
+A sketch on a wall outlives any socket, so a `PushFeed` has to reconnect. The feed does all of it on its own, and a sketch only ever reads `isConnected` and `lastError` to say what is happening.
 
 - A dropped connection redials after `retryEvery:` seconds, which the feed reads back as `retryInterval` and which never goes below one. A run of failures doubles the wait each time, up to eight times that. Anything that arrives puts the wait back to `retryEvery:` seconds.
 - A stream of server-sent events that names its own retry time is obeyed. One that labels its messages with ids is resumed with the last id seen, so a short drop loses nothing the server still holds.
@@ -211,7 +211,7 @@ A sketch on a wall outlives any socket, so a `PushFeed` has to reconnect. The fe
 |---|---|---|
 | `isConnected` | `Bool` | Whether the connection is open right now. |
 | `failureCount` | `Int` | How many connections have failed or dropped in a row. It goes back to zero once something arrives. |
-| `problem` | `String?` | Why the connection is down, in a sentence a sketch can draw. It is `nil` while the connection is up. |
+| `lastError` | `String?` | Why the connection is down, in a sentence a sketch can draw. It is `nil` while the connection is up. |
 
 <a name="export"></a>
 
@@ -236,7 +236,7 @@ Keep a real key out of the sketch file. Read it from the environment or a file y
 
 ### Sandboxed apps
 
-A sketch you run from the terminal reaches the network freely. A sketch wrapped as a sandboxed app needs the outgoing-connections entitlement (`com.apple.security.network.client`) in its entitlements file. Without that entitlement every request fails, and `problem` says the connection was refused.
+A sketch you run from the terminal reaches the network freely. A sketch wrapped as a sandboxed app needs the outgoing-connections entitlement (`com.apple.security.network.client`) in its entitlements file. Without that entitlement every request fails, and `lastError` says the connection was refused.
 
 ### See also
 

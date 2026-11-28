@@ -405,7 +405,7 @@ func send(timecode: Timecode)         // a position whole, as a full-frame timec
 func close()
 ```
 
-`open(matching:)` connects to a hardware destination. It takes the first destination whose name contains the text you pass, or the first available destination when you pass nothing. Then you send from `draw()`:
+`open(matching:)` connects to a hardware destination. It takes the first destination whose name contains the text you pass, or the first available destination when you pass nothing. When no destination has that name, or none is attached at all, it throws `MIDIError.noDestination` and opens nothing. `isOpen` stays `false` and sends go nowhere. A later `open`, once the device is plugged in, starts fresh. It never falls back to some other device. Then you send from `draw()`:
 
 ```swift
 let out = MIDIOutput()

@@ -101,11 +101,14 @@ device.connect()      // starts looking, and keeps looking
 device.disconnect()   // lets go and stops looking
 
 device.isConnected    // draw a waiting state from this
-device.name           // the connected device's own name
+device.lastError      // why the link last dropped, or nil
+device.name           // the connected device's own name, nil while nothing is connected
 device.signal         // how strong the last advertisement was
 ```
 
 `connect()` never fails and never gives up. If a device is out of range, switched off, or carried out of the room, the sketch waits for it. When the device comes back, it is picked up again with no call from you. If a connection fails halfway, the library looks for the device again in the same way. Call `connect()` once in `setup()`.
+
+While it waits, `lastError` says why the link dropped or would not come up, in the radio's own words when it gave any (`the link to Heart Strap 7 dropped: The connection has timed out unexpectedly.`). It is about the device, where `unavailableReason` is about the Mac's radio. It is `nil` again once the device is connected, and after a `disconnect()`, which is not an error.
 
 Once a device is connected, the library asks it about everything it offers. The library then subscribes to every value that announces itself, and reads every value the device holds one time. So the first frame that asks for a value usually has one.
 

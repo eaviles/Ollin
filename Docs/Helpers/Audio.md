@@ -59,6 +59,8 @@ override func setup() { try? mic.start() }
 
 Capturing the microphone needs the user's permission, and `start()` requests it the first time it runs. Until the user grants it, the level reads as silence. `start()` throws for what it can see, an audio engine that will not start once permission is granted; a microphone that is refused, denied or restricted, or an engine that fails after the prompt has returned, is written to `unavailableReason` instead, a sentence worth drawing that is `nil` while nothing has gone wrong. `Tone.play()`, `AudioPlayer.play()` and `Synth.start()` carry the same property for an engine that will not start, since the first note calls the synth's start for you and has nobody to throw to; each is cleared by the next start that succeeds. A packaged app must include a microphone-usage description. Under `swift run`, the system prompts on first use instead.
 
+While the prompt is up, a second `start()` asks nothing more, and `stop()` calls the start off: the answer, when it comes, opens nothing.
+
 <a name="audioplayer"></a>
 
 ### AudioPlayer
@@ -73,6 +75,8 @@ func stop()
 var loops: Bool
 var isPlaying: Bool
 ```
+
+`play()` after `pause()` carries on from where the pause left the file. Everywhere else it starts from the top: on a file that is already playing (so a sound can be struck again), after `stop()`, and on a file that has played out. That makes the usual toggle read as written: `if song.isPlaying { song.pause() } else { song.play() }`.
 
 `AudioPlayer` plays an audio file and analyzes it as it sounds. That lets you react to recorded music or a field recording the same way you react to the microphone. It decodes the formats AVFoundation reads (`.m4a`/AAC, `.mp3`, `.wav`, `.aiff`, `.caf`, …). The file is read a stretch at a time until it ends. A header that promises more than the file holds costs only what the file holds. A file whose sample rate is not one sound plays at (under 1 Hz, past 1,536 kHz, or not a number) throws `.couldNotDecode`, and so does a file that declares more than 1,024 channels.
 

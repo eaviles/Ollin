@@ -783,19 +783,30 @@ final class SynthRenderer: @unchecked Sendable {
         return index
     }
 
+    /// The pitches of the voices that are sounding, for the tests: which
+    /// note a full instrument gave up is only visible from here.
+    var soundingPitches: [Double] { voices.filter(\.isSounding).map(\.pitch) }
+
     /// Picks the voice a new note should use.
     ///
     /// A silent one if there is one, then the note that has already been let go
     /// and is furthest through its tail, and only then the oldest note still
-    /// held. Taking a held note last is what keeps a chord intact while a melody
-    /// runs over it.
+    /// being played. Taking a played note last is what keeps a chord intact
+    /// while a melody runs over it.
+    ///
+    /// A note given a length is still being played until the length runs
+    /// out: `isHeld` is false for it from the start (it only says whether a
+    /// `noteOff` can find the note), so it is the count still running that
+    /// tells it from a note let go. Read as let go, a timed note that has
+    /// only just started would be the first taken, being the quietest voice
+    /// there is while its attack rises.
     private func claimVoice() -> Int {
         if let free = voices.firstIndex(where: { !$0.isSounding }) { return free }
 
         var bestReleasing: (index: Int, level: Double)?
         var oldestHeld: (index: Int, startedAt: Int)?
         for (index, voice) in voices.enumerated() {
-            if !voice.isHeld {
+            if !voice.isHeld && voice.remaining == nil {
                 let level = voice.amplitude.level
                 if bestReleasing == nil || level < bestReleasing!.level {
                     bestReleasing = (index, level)

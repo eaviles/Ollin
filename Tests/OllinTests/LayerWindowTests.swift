@@ -280,6 +280,29 @@ struct LayerWindowTests {
         second.close()
     }
 
+    /// A window that goes away takes its button with it, whichever way it
+    /// goes: no release ever reaches a window that is gone, so a button left
+    /// down would read as held for the rest of the run.
+    @Test func aWindowThatGoesAwayLetsItsButtonGo() throws {
+        // The sketch closes it, as a sketch that dismisses a panel on a click does.
+        let sketch = TwoViews()
+        let pane = try makePane(sketch)
+        sketch.controls.isOpen = true
+        sketch.controls.mouseIsPressed = true
+        sketch.controls.close()
+        #expect(!sketch.controls.mouseIsPressed, "closed by the sketch, the window still reads its button as down")
+        _ = pane
+
+        // The run is done with it (the sketch was replaced).
+        let other = TwoViews()
+        let second = try makePane(other)
+        other.controls.isOpen = true
+        other.controls.mouseIsPressed = true
+        second.close()
+        #expect(!other.controls.isOpen)
+        #expect(!other.controls.mouseIsPressed, "closed by the run, the window still reads its button as down")
+    }
+
     // MARK: The run that opens them
 
     private func makeRunner(_ sketch: Sketch) throws -> (runner: SketchRunner, canvas: OllinMTKView) {

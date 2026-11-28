@@ -160,6 +160,27 @@ import OllinTestSupport
         return url
     }
 
+    /// Under an export the real player stays at rest: the frames come from
+    /// the file by the export's own clock, and nothing may come out of the
+    /// speakers. A sketch that sets `rate` while its clip plays must not
+    /// start the real player there.
+    @Test(clipTrait) func settingTheRateUnderAnExportLeavesTheRealPlayerAtRest() async throws {
+        let url = try #require(await writeTestClip())
+        defer { try? FileManager.default.removeItem(at: url) }
+        let player = try VideoPlayer(url: url)
+        // Nothing suspends while the flag is up.
+        OllinApp.isRenderingHeadless = true
+        defer { OllinApp.isRenderingHeadless = false }
+        player.play()
+        #expect(player.isPlaying)
+        player.rate = 2
+        #expect(player.livePlayerRate == 0,
+                "the real player is running at \(player.livePlayerRate) during an export")
+        player.rate = 0.5
+        #expect(player.livePlayerRate == 0)
+        player.pause()
+    }
+
     @Test(clipTrait) func metadataLoads() async throws {
         let url = try #require(await writeTestClip())
         defer { try? FileManager.default.removeItem(at: url) }

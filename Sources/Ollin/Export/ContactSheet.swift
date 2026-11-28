@@ -170,8 +170,8 @@ extension OllinApp {
         let renderer = try headlessRenderer(for: first, path: path)
         renderer.automaticQuality = quality
         renderer.renderScale = OllinApp.exportRenderScale
-        isRenderingHeadless = true
-        defer { isRenderingHeadless = false }
+        let modeFound = DriveMode.enter()
+        defer { modeFound.restore() }
 
         let canvas = first.canvasSizeForRun()
         let tileW = max(64, tileWidth)

@@ -78,11 +78,21 @@ public final class SketchWindow {
 
     /// Close the window. The layer goes on being drawn; nothing shows it.
     public func close() {
-        isDismissed = true
-        isOpen = false
+        wentAway(dismissed: true)
         let teardown = onClose
         onClose = nil
         teardown?()
+    }
+
+    /// The window is off screen, whichever way it went: the sketch closed
+    /// it, the person did, or the run was done with it. It is no longer open,
+    /// and a button that was down over it is no longer down, since no release
+    /// reaches a window that is gone. `dismissed` says it is not to be opened
+    /// again for this sketch.
+    func wentAway(dismissed: Bool) {
+        if dismissed { isDismissed = true }
+        isOpen = false
+        mouseIsPressed = false
     }
 
     /// Put the pointer at a place given as fractions of the window's content

@@ -41,7 +41,12 @@ public final class Camera: FrameSource, VideoFeed {
     }
 
     /// Whether capture is currently running.
-    public private(set) var isRunning = false
+    public var isRunning: Bool { phase == .running }
+
+    /// Where a start stands. `asking` is a start waiting on the system's
+    /// prompt: the answer belongs to it, and only while it still stands.
+    private enum Phase { case stopped, asking, running }
+    private var phase = Phase.stopped
 
     /// Whether the feed shows the world as it happens (`VideoFeed`): `true`
     /// while the camera runs.
@@ -109,7 +114,8 @@ public final class Camera: FrameSource, VideoFeed {
     /// whoever is at the machine, even from a sketch that starts a `Camera`
     /// itself rather than through `Camera.orStill`.
     public func start() throws {
-        guard !isRunning else { return }
+        // A start that is already waiting on the prompt is the start.
+        guard phase == .stopped else { return }
         if Camera.photoOnly {
             throw VisionError.unavailable("the camera stays closed under --photo")
         }
@@ -119,8 +125,14 @@ public final class Camera: FrameSource, VideoFeed {
         case .authorized:
             try configureAndRun()
         case .notDetermined:
+            phase = .asking
             Camera.requestAccess { granted in
                 Task { @MainActor in
+                    // The answer belongs to the start that is waiting on it.
+                    // A `stop()` since then called that start off, and a
+                    // second answer to one prompt finds the camera running.
+                    guard self.phase == .asking else { return }
+                    self.phase = .stopped
                     guard granted else {
                         self.unavailableReason = "camera access was refused"
                         self.isRefused = true
@@ -169,11 +181,19 @@ public final class Camera: FrameSource, VideoFeed {
     /// returned and there is no caller left to throw to.
     public private(set) var unavailableReason: String?
 
-    /// Stop capturing. Safe to call when not running.
+    /// Stop capturing. Safe to call when not running. Called while the
+    /// system's prompt is still up, it calls the start off: the answer, when
+    /// it comes, opens nothing.
     public func stop() {
-        guard isRunning else { return }
-        session.stopRunning()
-        isRunning = false
+        switch phase {
+        case .stopped:
+            return
+        case .asking:
+            phase = .stopped
+        case .running:
+            session.stopRunning()
+            phase = .stopped
+        }
     }
 
     /// The latest captured frame as a drawable `Image`, or `nil` before the first
@@ -199,7 +219,16 @@ public final class Camera: FrameSource, VideoFeed {
     /// `fittedRectangle(in:)` comes from the same conformance).
     public var waitingMessage: String { "Waiting for camera…" }
 
+    /// The step that opens the device, which the tests replace: a test must
+    /// not turn a real camera on.
+    package static var openDevice: @MainActor (Camera) throws -> Void = { try $0.openSession() }
+
     private func configureAndRun() throws {
+        try Camera.openDevice(self)
+        phase = .running
+    }
+
+    private func openSession() throws {
         if !configured {
             try configure()
             configured = true
@@ -207,7 +236,6 @@ public final class Camera: FrameSource, VideoFeed {
         // `startRunning()` is synchronous and can take a moment on first launch;
         // a one-time hitch at setup, acceptable for a sketch.
         session.startRunning()
-        isRunning = true
     }
 
     private func configure() throws {

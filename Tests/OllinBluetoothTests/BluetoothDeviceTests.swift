@@ -318,6 +318,55 @@ struct BluetoothDeviceTests {
         #expect(device.isConnected)
     }
 
+    /// A link that drops says why, in the radio's own words when it gave
+    /// any, until the device is back; and a device let go on purpose says
+    /// nothing, since nothing went wrong.
+    @Test func aLinkThatDropsSaysWhyUntilItIsBack() {
+        let radio = FakeRadio()
+        let device = BluetoothDevice(target: .name("strap"), backend: radio)
+        device.retryInterval = 60
+        device.connect()
+        radio.powerOn()
+        let strap = UUID()
+        radio.advertise(strap, name: "Heart Strap 7")
+        radio.present(strap, name: "Heart Strap 7", [telling(.heartRateMeasurement)])
+        #expect(device.isConnected && device.lastError == nil)
+        #expect(device.name == "Heart Strap 7")
+
+        radio.emit(.lost(device: strap, reason: "The connection has timed out unexpectedly."))
+        #expect(!device.isConnected)
+        #expect(device.lastError == "the link to Heart Strap 7 dropped: The connection has timed out unexpectedly.")
+        #expect(device.name == nil, "nothing is connected, so nothing has a name")
+        #expect(device.unavailableReason == nil, "the radio is fine: this is about the device")
+
+        // Back again, nothing is wrong.
+        radio.advertise(strap, name: "Heart Strap 7")
+        radio.present(strap, name: "Heart Strap 7", [telling(.heartRateMeasurement)])
+        #expect(device.isConnected && device.lastError == nil)
+
+        // A drop with no words from the radio still says what happened.
+        radio.emit(.lost(device: strap, reason: nil))
+        #expect(device.lastError == "the link to Heart Strap 7 dropped")
+
+        // Let go on purpose: no error to read.
+        device.disconnect()
+        #expect(device.lastError == nil)
+    }
+
+    /// A connection that never came up says that instead.
+    @Test func aConnectionThatNeverComesUpSaysSo() {
+        let radio = FakeRadio()
+        let device = BluetoothDevice(target: .name("strap"), backend: radio)
+        device.retryInterval = 60
+        device.connect()
+        radio.powerOn()
+        let strap = UUID()
+        radio.advertise(strap, name: "Heart Strap 7")
+        radio.emit(.lost(device: strap, reason: "could not connect"))
+        #expect(device.lastError?.hasSuffix("could not be connected to: could not connect") == true,
+                "read: \(device.lastError ?? "nil")")
+    }
+
     @Test func aConnectionThatNeverCompletesIsLookedForAgain() async {
         let radio = FakeRadio()
         let device = BluetoothDevice(target: .name("strap"), backend: radio)

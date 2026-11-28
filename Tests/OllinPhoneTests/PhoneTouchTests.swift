@@ -10,6 +10,13 @@ import simd
 /// expectation has one hand-checkable answer.
 @Suite(.timeLimit(.minutes(1))) @MainActor struct PhoneTouchTests {
 
+    /// A device nobody started is not connecting, and says what to do about
+    /// it, the way a device that plays a recording does.
+    @Test func aDeviceNobodyStartedSaysSo() {
+        let device = PhoneDevice()
+        #expect(device.waitingMessage == "Call start() to read the phone.")
+    }
+
     private func point(_ id: UInt32, _ x: Float, _ y: Float,
                        force: Float? = nil, radius: Float = 0.05,
                        age: Float = 0) -> PhoneTouchPoint {

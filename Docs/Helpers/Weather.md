@@ -8,7 +8,7 @@ A [`DataFeed`](./LiveData.md) reads any address. A `Weather` is a feed that alre
 
 The sun is not fetched at all. `Place.sun(at:)` works out where it is from the place and the clock, so a sketch can put it in the sky, and know when it rises and sets, with no network.
 
-Nothing throws. Before the first answer arrives, and whenever the network is down, every reading is `nil` and `problem` says why. A failure never takes the last good reading away.
+Nothing throws. Before the first answer arrives, and whenever the network is down, every reading is `nil` and `lastError` says why. A failure never takes the last good reading away.
 
 ### Contents
 
@@ -48,7 +48,7 @@ final class Sky: Sketch {
 }
 ```
 
-A `Place` is a latitude and a longitude in degrees, north and east positive: `Place(latitude: 19.43, longitude: -99.13)` is Mexico City. A name ("Oaxaca", "Tromsø", "Bath, Maine") is looked up once, when the weather starts, and the reading then carries the place it resolved to and the name the lookup knows it by. A name nothing matches leaves the weather empty, and `problem` says so.
+A `Place` is a latitude and a longitude in degrees, north and east positive: `Place(latitude: 19.43, longitude: -99.13)` is Mexico City. A name ("Oaxaca", "Tromsø", "Bath, Maine") is looked up once, when the weather starts, and the reading then carries the place it resolved to and the name the lookup knows it by. A name nothing matches leaves the weather empty, and `lastError` says so.
 
 `every:` is in seconds, and never goes below sixty. The default asks every fifteen minutes, which is how often the conditions are updated.
 
@@ -143,12 +143,12 @@ The position is the standard low-precision solar model, the one behind the NOAA 
 | `isRunning` | `Bool` | Whether the weather is asking. |
 | `isWaiting` | `Bool` | Whether a request is in flight right now. |
 | `failureCount` | `Int` | Requests that have failed in a row. Back to zero on the next answer. |
-| `problem` | `String?` | Why the last request failed, or why the name could not be found, in a sentence a sketch can draw. `nil` once an answer arrives. |
+| `lastError` | `String?` | Why the last request failed, or why the name could not be found, in a sentence a sketch can draw. `nil` once an answer arrives. |
 
 A failure never clears the last reading. Keep drawing it, with the notice over the top:
 
 ```swift
-if let problem = sky.problem { drawStatus(problem, style: .warning) }
+if let problem = sky.lastError { drawStatus(problem, style: .warning) }
 ```
 
 The politeness is the feed's: the next request waits for the last one to finish, a run of failures backs off to eight times the interval, and a name that could not be reached is retried from a minute rather than from the weather's own interval.

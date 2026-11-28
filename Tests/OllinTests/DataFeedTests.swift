@@ -204,7 +204,7 @@ struct DataFeedTests {
         _ = try await waitFor { feed.updateCount == 1 ? true : nil }
         #expect(feed.json["height"].number == 2.5)
         #expect(feed.text == #"{"height": 2.5}"#)
-        #expect(feed.problem == nil)
+        #expect(feed.lastError == nil)
         #expect(feed.failureCount == 0)
         #expect((feed.timeSinceUpdate ?? -1) >= 0)
         #expect(StubServer.asks(at: path).count == 1)
@@ -238,7 +238,7 @@ struct DataFeedTests {
         #expect(StubServer.asks(at: path)[1].headers["if-none-match"] == "\"v1\"")
         #expect(feed.updateCount == 1)
         #expect(feed.json["height"].number == 2.5)
-        #expect(feed.problem == nil)
+        #expect(feed.lastError == nil)
         #expect(feed.failureCount == 0)
     }
 
@@ -263,7 +263,7 @@ struct DataFeedTests {
         _ = try await waitFor { feed.updateCount == 1 ? true : nil }
         StubServer.answer(StubServer.Answer(status: 500, body: "no"), at: path)
         feed.refresh()
-        let problem = try await waitFor { feed.problem }
+        let problem = try await waitFor { feed.lastError }
 
         #expect(problem.contains("500"))
         #expect(feed.failureCount == 1)
@@ -278,7 +278,7 @@ struct DataFeedTests {
         StubServer.answer(StubServer.Answer(failure: .cannotConnectToHost), at: path)
 
         feed.start()
-        let problem = try await waitFor { feed.problem }
+        let problem = try await waitFor { feed.lastError }
         #expect(!problem.isEmpty)
         #expect(feed.failureCount == 1)
         #expect(feed.json.isNull)
@@ -290,12 +290,12 @@ struct DataFeedTests {
         StubServer.answer(StubServer.Answer(failure: .timedOut), at: path)
 
         feed.start()
-        _ = try await waitFor { feed.problem }
+        _ = try await waitFor { feed.lastError }
         StubServer.answer(StubServer.Answer(body: #"{"height": 1}"#), at: path)
         feed.refresh()
         _ = try await waitFor { feed.updateCount == 1 ? true : nil }
 
-        #expect(feed.problem == nil)
+        #expect(feed.lastError == nil)
         #expect(feed.failureCount == 0)
     }
 
@@ -304,7 +304,7 @@ struct DataFeedTests {
         defer { feed.stop() }
 
         feed.start()
-        let problem = try await waitFor { feed.problem }
+        let problem = try await waitFor { feed.lastError }
         #expect(problem.contains("not an address"))
         #expect(feed.json.isNull)
         #expect(feed.updateCount == 0)

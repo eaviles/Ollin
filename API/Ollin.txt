@@ -40,6 +40,7 @@
   func restart(variation: Int)
   func scrub(to: Int)
   init(sketch: Sketch, view: MetalKit.MTKView, device: any Metal.MTLDevice)
+  var isRecordingTake: Bool { get }
   var isReplaying: Bool { get }
   var onSetupError: ((String?) -> Void)? { get set }
   var onUserShaderError: ((ShaderCompileError?) -> Void)? { get set }
@@ -1112,7 +1113,7 @@ final class DataFeed: Sendable
   var isRunning: Bool { get }
   var isWaiting: Bool { get }
   var json: JSON { get }
-  var problem: String? { get }
+  var lastError: String? { get }
   var table: Table? { get }
   var text: String? { get }
   var timeSinceUpdate: Double? { get }
@@ -1597,7 +1598,7 @@ final class PushFeed: Sendable
   var isConnected: Bool { get }
   var isRunning: Bool { get }
   var json: JSON { get }
-  var problem: String? { get }
+  var lastError: String? { get }
   var text: String? { get }
   var timeSinceUpdate: Double? { get }
   var updateCount: Int { get }
@@ -1981,9 +1982,9 @@ final class Weather: Sendable
   var isDay: Bool? { get }
   var isRunning: Bool { get }
   var isWaiting: Bool { get }
+  var lastError: String? { get }
   var precipitation: Double? { get }
   var pressure: Double? { get }
-  var problem: String? { get }
   var reading: Weather.Reading? { get }
   var snowfall: Double? { get }
   var sunrise: Foundation.Date? { get }

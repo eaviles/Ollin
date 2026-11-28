@@ -1102,7 +1102,7 @@ let package = Package(
         // so it never fails CI for a consent the machine can't grant itself.
         .testTarget(
             name: "OllinScreenTests",
-            dependencies: ["Ollin", "OllinScreen"]
+            dependencies: ["Ollin", "OllinScreen", "OllinTestSupport"]
         ),
         // Controller reading correctness. A synthetic `GCController` is a real
         // controller object the system never lists, so the tests inject one

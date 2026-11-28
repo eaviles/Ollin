@@ -28,7 +28,7 @@ import os
 /// reads: there is nothing to draw yet, rather than an error to handle. A
 /// failure after that keeps the last answer, so a network that drops or a
 /// server that is unhappy leaves the sketch drawing what it last read.
-/// `problem` says why, for a sketch that wants to show it.
+/// `lastError` says why, for a sketch that wants to show it.
 ///
 /// `updateCount` counts the answers that differed from the one before, so a sketch
 /// can tell news from a poll that changed nothing:
@@ -122,7 +122,7 @@ public final class DataFeed: @unchecked Sendable {
 
     /// Reads `address` every `interval` seconds.
     ///
-    /// An address that isn't one leaves the feed empty and says so in `problem`,
+    /// An address that isn't one leaves the feed empty and says so in `lastError`,
     /// the same as a server that never answers: a feed with nothing to draw is
     /// one state, not two.
     ///
@@ -285,7 +285,7 @@ public final class DataFeed: @unchecked Sendable {
 
     /// Why the last request failed, in a sentence a sketch can draw. `nil` once
     /// an answer arrives.
-    public var problem: String? { state.withLock { $0.problem } }
+    public var lastError: String? { state.withLock { $0.problem } }
 
     // MARK: Asking
 

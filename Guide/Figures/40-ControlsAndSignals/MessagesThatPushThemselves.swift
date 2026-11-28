@@ -192,7 +192,7 @@ final class MessagesThatPushThemselves: Sketch {
             drawText("resumed by its id, late but not lost", x(arrived), y + 13)
         }
 
-        // The problem read lights for exactly the stretch the connection is
+        // The lastError read lights for exactly the stretch the connection is
         // down, and nothing already read goes away.
         withState {
             noStroke()
@@ -201,7 +201,7 @@ final class MessagesThatPushThemselves: Sketch {
             fill(accent)
             textSize(11)
             textAlign(.left, .middle)
-            drawText("problem: the connection closed", x(dropAt) + 9, y - 37)
+            drawText("lastError: the connection closed", x(dropAt) + 9, y - 37)
         }
     }
 
